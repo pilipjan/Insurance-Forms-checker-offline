@@ -48,6 +48,15 @@
     let clean = cleanText(str).trim();
     if (!clean) return clean;
     
+    // Safeguard: If the original unmodified prefix is already known, do not substitute!
+    const originalPrefixMatch = clean.match(/^([A-Z0-9]{2,8})/i);
+    if (originalPrefixMatch) {
+      const origPrefix = originalPrefixMatch[1].toUpperCase();
+      if ((knownPrefixes || []).some(p => origPrefix === p.toUpperCase() || origPrefix.startsWith(p.toUpperCase()))) {
+        return clean;
+      }
+    }
+    
     // substitutions for common numeric OCR typos at the start of a code prefix
     const substitutions = {
       '8': 'B',
@@ -102,8 +111,8 @@
       const edition = `${edMatch[2]}${edMatch[3]}`;
       const description = cleanText(edMatch[4]);
       
-      const prefixMatch = rawCode.match(/^([A-Z]{2,8})/i);
-      const prefix = prefixMatch ? prefixMatch[1].toUpperCase() : "";
+      const fallbackMatch = rawCode.match(/^([A-Z0-9]+?)(?=\d{2,6}$)/i) || rawCode.match(/^([A-Z]+)/i);
+      const prefix = (prefixes.find(p => rawCode.toUpperCase().startsWith(p.toUpperCase())) || (fallbackMatch ? fallbackMatch[1] : "")).toUpperCase();
       const known = prefixes.some(p => prefix === p.toUpperCase() || prefix.startsWith(p.toUpperCase()));
       
       const normalizedCode = `${rawCode}${edition}`;
@@ -123,19 +132,22 @@
     }
 
     // 2. Standard prefix+digits pattern: e.g. "BP0002 COVERAGE FORM"
+    // We allow the prefix to have digits (non-greedy alphanumeric matching)
     const match = clean.match(
-      /^\s*([A-Z]{2,8})\s*(\d{2,6})\s*(?:\(?\s*(\d{2})\s*\/\s*(\d{2})\s*\)?)?/i
+      /^\s*([A-Z0-9]{2,8}?)\s*(\d{2,6})\s*(?:\(?\s*(\d{2})\s*\/\s*(\d{2})\s*\)?)?/i
     );
     if (!match) return result;
 
-    const prefix = match[1].toUpperCase();
+    const rawCode = `${match[1]}${match[2]}`.toUpperCase();
+    const fallbackMatch = rawCode.match(/^([A-Z0-9]+?)(?=\d{2,6}$)/i);
+    const prefix = (prefixes.find(p => rawCode.startsWith(p.toUpperCase())) || (fallbackMatch ? fallbackMatch[1] : match[1])).toUpperCase();
     const formNumber = match[2];
     const edition = match[3] && match[4] ? `${match[3]}${match[4]}` : "";
 
-    const normalizedCode = `${prefix}${formNumber}${edition ? edition : ""}`;
+    const normalizedCode = `${rawCode}${edition ? edition : ""}`;
     const displayCode = edition
-      ? `${prefix}${formNumber} (${match[3]}/${match[4]})`
-      : `${prefix}${formNumber}`;
+      ? `${rawCode} (${match[3]}/${match[4]})`
+      : rawCode;
 
     const description = cleanText(clean.slice(match[0].length));
     const known = prefixes.some(p => prefix === p.toUpperCase() || prefix.startsWith(p.toUpperCase()));
@@ -143,7 +155,7 @@
     return {
       ...result,
       normalizedCode,
-      baseCode: `${prefix}${formNumber}`,
+      baseCode: rawCode,
       displayCode,
       edition,
       displayEdition: edition ? `${match[3]}/${match[4]}` : "",
