@@ -1,4 +1,4 @@
-const CACHE_NAME = "insurance-forms-comparator-v1.8.0";
+const CACHE_NAME = "insurance-forms-comparator-v2.1.0";
 const ASSETS = [
   "./",
   "./index.html",
@@ -31,7 +31,12 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   const request = event.request;
   const acceptsHtml = request.headers.get("accept")?.includes("text/html");
-  const isCoreAsset = ASSETS.some((asset) => request.url.endsWith(asset.replace("./", "/forms-checker-offline/")));
+  
+  const isCoreAsset = ASSETS.some((asset) => {
+    const clean = asset.replace("./", "");
+    return request.url.endsWith(clean) || request.url.endsWith("/") || request.url.includes("/forms-checker-offline/");
+  });
+  
   if (acceptsHtml || isCoreAsset) {
     event.respondWith(
       fetch(request)
