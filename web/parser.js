@@ -44,8 +44,41 @@
     return normalizedCode;
   }
 
+  function fixOcrPrefix(str, knownPrefixes) {
+    let clean = cleanText(str).trim();
+    if (!clean) return clean;
+    
+    // substitutions for common numeric OCR typos at the start of a code prefix
+    const substitutions = {
+      '8': 'B',
+      '0': 'O',
+      '1': 'I',
+      '5': 'S',
+      '2': 'Z'
+    };
+    
+    const firstChar = clean.charAt(0);
+    if (substitutions[firstChar]) {
+      const substituted = substitutions[firstChar] + clean.slice(1);
+      // See if it starts with a known prefix
+      const match = substituted.match(/^([A-Z]{2,8})/i);
+      if (match) {
+        const prefix = match[1].toUpperCase();
+        if ((knownPrefixes || []).some(p => prefix === p.toUpperCase() || prefix.startsWith(p.toUpperCase()))) {
+          return substituted;
+        }
+      }
+    }
+    return clean;
+  }
+
   function parseFormLine(rawLine, knownPrefixes) {
-    const clean = cleanText(rawLine);
+    const prefixes = knownPrefixes || defaultPrefixes;
+    let clean = cleanText(rawLine);
+    
+    // Fuzzy OCR prefix correction
+    clean = fixOcrPrefix(clean, prefixes);
+
     const result = {
       raw: rawLine,
       clean,
@@ -61,25 +94,51 @@
 
     if (!clean) return result;
 
-    // Extended regex: 2-8 letter prefix, then digits (4-8), then optional edition (MM/YY)
+    // 1. Try matching with edition delimiter first: e.g. "BCEE (10/13) COVERAGE ENHANCEMENT"
+    // Fits any alphanumeric code, an edition code, and then description.
+    const edMatch = clean.match(/^([A-Z0-9\-\s]{2,12})\s*\(?\s*(\d{2})\s*[\/\-]\s*(\d{2})\s*\)?\s*(.*)$/i);
+    if (edMatch) {
+      const rawCode = cleanText(edMatch[1]).replace(/\s/g, "");
+      const edition = `${edMatch[2]}${edMatch[3]}`;
+      const description = cleanText(edMatch[4]);
+      
+      const prefixMatch = rawCode.match(/^([A-Z]{2,8})/i);
+      const prefix = prefixMatch ? prefixMatch[1].toUpperCase() : "";
+      const known = prefixes.some(p => prefix === p.toUpperCase() || prefix.startsWith(p.toUpperCase()));
+      
+      const normalizedCode = `${rawCode}${edition}`;
+      const displayCode = `${rawCode} (${edMatch[2]}/${edMatch[3]})`;
+
+      return {
+        ...result,
+        normalizedCode,
+        baseCode: rawCode,
+        displayCode,
+        edition,
+        displayEdition: `${edMatch[2]}/${edMatch[3]}`,
+        description,
+        known,
+        parseStatus: normalizedCode ? "Parsed" : "Unknown Format",
+      };
+    }
+
+    // 2. Standard prefix+digits pattern: e.g. "BP0002 COVERAGE FORM"
     const match = clean.match(
       /^\s*([A-Z]{2,8})\s*(\d{2,6})\s*(?:\(?\s*(\d{2})\s*\/\s*(\d{2})\s*\)?)?/i
     );
     if (!match) return result;
 
     const prefix = match[1].toUpperCase();
-    const formNumber = match[2];           // keep as-is (variable length)
+    const formNumber = match[2];
     const edition = match[3] && match[4] ? `${match[3]}${match[4]}` : "";
 
-    // Build normalized code: PREFIX + FORMNUM + EDITION (no spaces)
     const normalizedCode = `${prefix}${formNumber}${edition ? edition : ""}`;
-    // Display code: PREFIX + FORMNUM + optional (MM/YY)
     const displayCode = edition
       ? `${prefix}${formNumber} (${match[3]}/${match[4]})`
       : `${prefix}${formNumber}`;
 
     const description = cleanText(clean.slice(match[0].length));
-    const known = (knownPrefixes || []).some(p => prefix === p.toUpperCase() || prefix.startsWith(p.toUpperCase()));
+    const known = prefixes.some(p => prefix === p.toUpperCase() || prefix.startsWith(p.toUpperCase()));
 
     return {
       ...result,
@@ -95,34 +154,38 @@
   }
 
   /* ── SPLIT-COLUMN DETECTION ──────────────────────────────
-     Some OCR tools extract two-column schedule tables as two
-     separate lists: codes first, then descriptions below.
-     Detect this pattern and zip them back together.
+     OCR outputs of tables often print entire columns sequentially.
+     This zips Codes, Editions, and Descriptions blocks back together.
   ───────────────────────────────────────────────────────── */
 
   function looksLikeCode(line, knownPrefixes) {
-    // A line "looks like a code" if it starts with a known prefix + digits
     const clean = cleanText(line);
     if (!clean) return false;
-    // Match: 2-letter prefix, digits, optional edition like (09/11)
-    const m = clean.match(/^([A-Za-z]{2,10})\s*(\d{4,})\s*(?:\(?\d{2}\/\d{2}\)?)?/);
+    // Standard prefix code, or any word consisting of letters and digits of length 3-10
+    const m = clean.match(/^([A-Za-z0-9]{2,10})\s*(\d*)/);
     if (!m) return false;
-    const prefix = m[1].toUpperCase();
-    // Accept if it starts with any 2+ letter prefix followed by digits
-    return /^[A-Z]{2,}/.test(prefix);
+    const word = m[1].toUpperCase();
+    return /^[A-Z]{2,}/.test(word) && word.length <= 10;
   }
 
   function looksLikeDescriptionOnly(line) {
     const clean = cleanText(line);
     if (!clean) return false;
-    // A description-only line: starts with uppercase letters but NOT a code pattern
-    // i.e., no digits immediately after an uppercase prefix
-    return /^[A-Z][A-Z\s\-\/\,\(\)\'\.]+$/.test(clean) &&
-           !/^[A-Z]{2,10}\s*\d{2,}/.test(clean);
+    // Standard capitalized uppercase text, not a short code, not an edition
+    return /^[A-Z][A-Z\s\-\/\,\(\)\'\.\&]{4,}$/.test(clean) &&
+           !/^[A-Z]{2,10}\s*\d{2,}/.test(clean) &&
+           !/^\(?[0-9]{2}\/[0-9]{2}\)?$/.test(clean);
+  }
+
+  function looksLikeEdition(line) {
+    const clean = cleanText(line);
+    return /^\s*\(?\s*\d{2}\s*[\/\-]\s*\d{2}(?:\s*[\/\-]\s*\d{2,4})?\s*\)?\s*$/.test(clean);
   }
 
   function detectSplitColumn(lines, knownPrefixes) {
-    // Find groups of lines separated by blank lines
+    const prefixes = knownPrefixes || defaultPrefixes;
+    
+    // 1. Group non-empty lines separated by blanks
     const groups = [];
     let current = [];
     for (const line of lines) {
@@ -137,69 +200,90 @@
 
     if (groups.length < 2) return null;
 
-    // For each group, calculate what fraction of lines look like codes vs descriptions
-    const groupStats = groups.map(g => {
-      const codeLines   = g.filter(l => looksLikeCode(l, knownPrefixes));
-      const descLines   = g.filter(l => looksLikeDescriptionOnly(l));
-      return { lines: g, codeRatio: codeLines.length / g.length, descRatio: descLines.length / g.length };
-    });
-
-    // Find a "code block" (mostly codes) and a "description block" (mostly descriptions)
-    const codeGroups = groupStats.filter(g => g.codeRatio > 0.5);
-    const descGroups = groupStats.filter(g => g.descRatio > 0.7 && g.codeRatio < 0.2);
-
-    if (!codeGroups.length || !descGroups.length) return null;
-
-    // Collect all code-only lines from codeGroups (lines with no description after the code)
-    const codeOnlyLines = [];
-    const codeWithDescLines = [];
-    for (const g of codeGroups) {
-      for (const line of g.lines) {
-        const parsed = parseFormLine(line, knownPrefixes);
-        if (parsed.normalizedCode && !parsed.description.trim()) {
-          codeOnlyLines.push(parsed);
+    // 2. Classify each group
+    const groupTypes = groups.map(g => {
+      let codeCount = 0;
+      let editionCount = 0;
+      let descCount = 0;
+      
+      for (const line of g) {
+        const fixedLine = fixOcrPrefix(line, prefixes);
+        if (looksLikeEdition(line)) {
+          editionCount++;
+        } else if (looksLikeCode(fixedLine, prefixes) || /^[A-Z]{3,8}\d{0,4}$/i.test(fixedLine)) {
+          codeCount++;
         } else {
-          codeWithDescLines.push(parsed);
+          descCount++;
         }
       }
-    }
-
-    // Collect all description-only lines
-    const descOnlyLines = [];
-    for (const g of descGroups) {
-      for (const line of g.lines) {
-        descOnlyLines.push(cleanText(line));
-      }
-    }
-
-    // If the counts are reasonably close, zip them
-    if (!codeOnlyLines.length || !descOnlyLines.length) return null;
-    // Allow some mismatch tolerance
-    if (Math.abs(codeOnlyLines.length - descOnlyLines.length) > Math.max(codeOnlyLines.length, descOnlyLines.length) * 0.4) return null;
-
-    // Merge: assign each description to the corresponding code-only line
-    const merged = codeOnlyLines.map((parsed, i) => {
-      const desc = descOnlyLines[i] || "";
-      return { ...parsed, description: desc };
+      
+      const total = g.length || 1;
+      return {
+        lines: g,
+        isEdition: (editionCount / total) > 0.7,
+        isCode: (codeCount / total) > 0.6,
+        isDesc: (descCount / total) > 0.6 && (codeCount / total) < 0.3
+      };
     });
 
-    // Combine with code+desc lines already parsed correctly, preserve order from original code groups
-    const allCodeLines = [];
-    for (const g of codeGroups) {
-      for (const line of g.lines) {
-        const parsed = parseFormLine(line, knownPrefixes);
-        if (parsed.normalizedCode && !parsed.description.trim()) {
-          // Find matching merged entry
-          const m = merged.find(x => x.normalizedCode === parsed.normalizedCode && !x._used);
-          if (m) { m._used = true; allCodeLines.push(m); }
-          else { allCodeLines.push(parsed); }
+    const codeGroup = groupTypes.find(g => g.isCode);
+    const editionGroup = groupTypes.find(g => g.isEdition);
+    const descGroup = groupTypes.find(g => g.isDesc);
+
+    // Ensure we have at least a Code group and a Description group
+    if (codeGroup && descGroup) {
+      const codes = codeGroup.lines;
+      const descs = descGroup.lines;
+      const editions = editionGroup ? editionGroup.lines : [];
+
+      // Mismatch tolerance (must be relatively close in size)
+      const maxLen = Math.max(codes.length, descs.length);
+      const minLen = Math.min(codes.length, descs.length);
+      if (maxLen - minLen > maxLen * 0.4) return null;
+
+      const parsedLines = [];
+      for (let i = 0; i < codes.length; i++) {
+        const rawCode = codes[i] || "";
+        const fixedCode = fixOcrPrefix(rawCode, prefixes);
+        const editionStr = editions.length ? (editions[i] || "") : "";
+        const descStr = descs[i] || "";
+        
+        let combined = fixedCode;
+        if (editionStr) {
+          const cleanEd = cleanText(editionStr);
+          if (cleanEd.startsWith("(") && cleanEd.endsWith(")")) {
+            combined += ` ${cleanEd}`;
+          } else {
+            combined += ` (${cleanEd})`;
+          }
+        }
+        if (descStr) {
+          combined += ` ${descStr}`;
+        }
+
+        const parsed = parseFormLine(combined, prefixes);
+        if (parsed.normalizedCode) {
+          parsedLines.push(parsed);
         } else {
-          allCodeLines.push(parsed);
+          // Fallback parsing
+          parsedLines.push({
+            raw: combined,
+            clean: combined,
+            normalizedCode: cleanText(fixedCode).replace(/\s/g, ""),
+            baseCode: cleanText(fixedCode).replace(/\s/g, ""),
+            displayCode: fixedCode,
+            edition: editionStr.replace(/[\(\)]/g, ""),
+            displayEdition: editionStr.replace(/[\(\)]/g, ""),
+            description: descStr,
+            known: false,
+            parseStatus: "Unknown Format"
+          });
         }
       }
+      return parsedLines;
     }
 
-    return allCodeLines.length ? allCodeLines : null;
+    return null;
   }
 
   function parseSchedule(text, knownPrefixes) {
@@ -207,13 +291,13 @@
     const rawLines = String(text || "").split(/\r?\n/);
     const nonEmpty = rawLines.filter(l => cleanText(l));
 
-    // Try split-column detection first
+    // Try split-column zipping first
     if (nonEmpty.length >= 4) {
       const splitResult = detectSplitColumn(rawLines, prefixes);
       if (splitResult && splitResult.length) return splitResult;
     }
 
-    // Normal single-column parse
+    // Standard linear parse
     return rawLines
       .map((line) => parseFormLine(line, prefixes))
       .filter((item) => item.clean);
