@@ -2,8 +2,8 @@
   const defaultPrefixes = [
     "AG", "AP", "ASPCO", "B", "BCG", "BCR", "BCP", "BDEC", "BEONY", "BIL", "BM", "BP",
     "CA", "CF", "CG", "CL", "CM", "CP", "CR", "CU", "CX", "CY",
-    "DE", "DL", "DP", "DS", "EB", "EP", "FB", "FL", "FO", "FP", "GI", "HO", "IH", "IL", "IM",
-    "IN", "MC", "MI", "MM", "MP", "OP", "PM", "PP", "PR", "SE", "SF", "TC", "WC"
+    "DE", "DL", "DP", "DS", "DX", "EB", "EP", "FB", "FL", "FO", "FP", "GI", "HO", "IH", "IL", "IM",
+    "IN", "MC", "MI", "MM", "MP", "OP", "PM", "PN", "PP", "PR", "SE", "SF", "TC", "WC"
   ];
 
   function cleanText(value) {
@@ -81,6 +81,30 @@
     return clean;
   }
 
+  /**
+   * In Travelers/ISO spaced form codes (e.g. "IL T0 02 11 89"), the 2-char
+   * form-type segment (T0, U3, D2, etc.) always has a digit as the 2nd char.
+   * OCR commonly misreads 0→O, 1→I, 8→B, etc.  Fix those in the 2nd position only.
+   */
+  function fixOcrDigitInFormType(twoCharCode) {
+    if (!twoCharCode || twoCharCode.length !== 2) return twoCharCode || "";
+    const letterToDigit = {
+      'O': '0', 'Q': '0', 'D': '0',
+      'I': '1', 'L': '1',
+      'Z': '2',
+      'S': '5',
+      'B': '8',
+      'G': '6'
+    };
+    const first = twoCharCode[0]; // Keep letter (T, U, D, C, etc.)
+    const secondRaw = twoCharCode[1].toUpperCase();
+    // Only correct if it's a letter that looks like a digit
+    const second = (/[A-Z]/.test(secondRaw) && letterToDigit[secondRaw] !== undefined)
+      ? letterToDigit[secondRaw]
+      : secondRaw;
+    return first + second;
+  }
+
   function parseFormLine(rawLine, knownPrefixes) {
     const prefixes = knownPrefixes || defaultPrefixes;
     let clean = cleanText(rawLine);
@@ -102,6 +126,46 @@
     };
 
     if (!clean) return result;
+
+    // 0. Spaced Travelers/ISO format: "XX XX ## [## ##] description"
+    //    e.g. "IL T0 02 11 89 COMMON POLICY DECLARATIONS"
+    //         "DX T0 00 11 12 DELUXE PROP COV PART DECLARATIONS"
+    //         "CG D2 46 04 19 BLANKET AI-W/COMP OPS IF REQ BY CONTRACT"
+    //         "IL T8 00 GENERAL PURPOSE ENDORSEMENT" (no edition)
+    //    The 2-char form-type (T0, U3, D2) may have OCR errors in its 2nd char.
+    const spacedMatch = clean.match(
+      /^([A-Z]{2})\s+([A-Z0-9]{2})\s+(\d{2})\b(?:\s+(\d{2})\b\s+(\d{2})\b)?(?:\s+(.+))?$/i
+    );
+    if (spacedMatch) {
+      const rawPrefix = spacedMatch[1].toUpperCase();
+      const rawFormType = spacedMatch[2].toUpperCase();
+      const formType = fixOcrDigitInFormType(rawFormType); // e.g. TO→T0
+      const formNum = spacedMatch[3];                       // e.g. "02"
+      const month = spacedMatch[4] || "";                   // e.g. "11"
+      const year = spacedMatch[5] || "";                    // e.g. "89"
+      const description = cleanText(spacedMatch[6] || "");
+
+      const baseCode = `${rawPrefix}${formType}${formNum}`.toUpperCase();
+      const edition = (month && year) ? `${month}${year}` : "";
+      const normalizedCode = `${baseCode}${edition}`;
+      const displayEdition = (month && year) ? `${month}/${year}` : "";
+      const displayCode = displayEdition
+        ? `${rawPrefix} ${formType} ${formNum} (${displayEdition})`
+        : `${rawPrefix} ${formType} ${formNum}`;
+      const known = prefixes.some(p => rawPrefix === p.toUpperCase() || rawPrefix.startsWith(p.toUpperCase()));
+
+      return {
+        ...result,
+        normalizedCode,
+        baseCode,
+        displayCode,
+        edition,
+        displayEdition,
+        description,
+        known,
+        parseStatus: "Parsed",
+      };
+    }
 
     // 1. Try matching with edition delimiter first: e.g. "BCEE (10/13) COVERAGE ENHANCEMENT"
     // Fits any alphanumeric code, an edition code, and then description.
@@ -168,7 +232,13 @@
   function looksLikeCode(line, knownPrefixes) {
     const clean = cleanText(line).replace(/\s/g, "").toUpperCase();
     if (!clean) return false;
-    return /^[A-Z]{2,8}\d{0,6}$/.test(clean);
+    // Standard compact format: e.g. BP0002, BCEE, ILT00211
+    if (/^[A-Z]{2,8}\d{0,6}$/.test(clean)) return true;
+    // Spaced Travelers/ISO format after space-removal:
+    // 2-letter prefix + 2-alphanum form-type + 2-8 digits (form# + optional month+year)
+    // e.g. ILTO021189, DXT0001112, CGD2460419, ILT800
+    if (/^[A-Z]{2}[A-Z0-9]{2}\d{2,8}$/.test(clean)) return true;
+    return false;
   }
 
   function looksLikeDescriptionOnly(line) {
