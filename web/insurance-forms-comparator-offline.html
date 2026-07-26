@@ -1011,19 +1011,10 @@ body.section-maximized {
     };
   }
 
-  /* ── SPLIT-COLUMN DETECTION ──────────────────────────────
-     OCR outputs of tables often print entire columns sequentially.
-     This zips Codes, Editions, and Descriptions blocks back together.
-  ───────────────────────────────────────────────────────── */
-
   function looksLikeCode(line, knownPrefixes) {
-    const clean = cleanText(line);
+    const clean = cleanText(line).replace(/\s/g, "").toUpperCase();
     if (!clean) return false;
-    // Standard prefix code, or any word consisting of letters and digits of length 3-10
-    const m = clean.match(/^([A-Za-z0-9]{2,10})\s*(\d*)/);
-    if (!m) return false;
-    const word = m[1].toUpperCase();
-    return /^[A-Z]{2,}/.test(word) && word.length <= 10;
+    return /^[A-Z]{2,8}\d{0,6}$/.test(clean);
   }
 
   function looksLikeDescriptionOnly(line) {
@@ -1068,7 +1059,7 @@ body.section-maximized {
         const fixedLine = fixOcrPrefix(line, prefixes);
         if (looksLikeEdition(line)) {
           editionCount++;
-        } else if (looksLikeCode(fixedLine, prefixes) || /^[A-Z]{3,8}\d{0,4}$/i.test(fixedLine)) {
+        } else if (looksLikeCode(fixedLine, prefixes)) {
           codeCount++;
         } else {
           descCount++;
