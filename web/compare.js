@@ -65,17 +65,26 @@
       ? `${window.ComparatorParser.formatEdition(previousItem.edition)} -> ${window.ComparatorParser.formatEdition(currentItem.edition)}`
       : window.ComparatorParser.formatEdition((currentItem || previousItem || {}).edition || "");
 
+    // Prefer the parser item's own displayCode (preserves spaces/formatting e.g. "IL T8 01 (10/93)")
+    // Fall back to displayFormCode() only for standard compact codes (e.g. "ILT00211")
+    const activeItem = currentItem || previousItem;
+    const displayCode = (activeItem && activeItem.displayCode)
+      ? activeItem.displayCode
+      : (normalizedCode ? window.ComparatorParser.displayFormCode(normalizedCode) : "");
+
     return {
       status,
       normalizedCode: normalizedCode || "",
-      displayCode: normalizedCode ? window.ComparatorParser.displayFormCode(normalizedCode) : "",
+      displayCode,
       originalPrevious: previousItem ? previousItem.raw : "",
       originalCurrent: currentItem ? currentItem.raw : "",
       description: previousItem && currentItem ? preferredDescription(previousItem, currentItem) : ((currentItem || previousItem || {}).description || ""),
       edition,
       notes,
+      source: (activeItem || {}).source,
     };
   }
+
 
   function compareSchedules(previousItems, currentItems) {
     const previous = buildKnownMap(previousItems);

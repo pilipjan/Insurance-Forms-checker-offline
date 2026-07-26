@@ -366,10 +366,13 @@
     } else {
       rawCode = edit.displayCode !== undefined ? edit.displayCode : (row.displayCode || row.normalizedCode || "");
     }
-    const code = rawCode.replace(/\s*\(\d{2}\/\d{2}\)\s*$/, "");
+    // Strip trailing edition suffix like "(10/93)" or "(09/11)" from the display code
+    // so the edition appears only in its own column
+    const code = rawCode.replace(/\s*\(\d{1,2}\/\d{2,4}\)\s*$/, "").trim();
     const desc = edit.description !== undefined ? edit.description : row.description;
     return [code, desc].filter(Boolean).join(" ") || row.normalizedCode || "";
   }
+
 
   function checklistEdition(v) {
     let e = String(v || "").trim();
@@ -387,6 +390,10 @@
         status: checklistStatus(r.status),
         source: r.source || "Current Policy",
         normalizedCode: r.normalizedCode,
+        displayCode: r.displayCode || r.normalizedCode,
+        originalPrevious: r.originalPrevious,
+        originalCurrent: r.originalCurrent,
+        description: r.description,
       }));
   }
 
