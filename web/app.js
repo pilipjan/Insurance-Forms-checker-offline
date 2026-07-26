@@ -1200,6 +1200,41 @@
   // Checklist cell-click copy (delegated)
   el.excelChecklistBody.addEventListener("click", handleCellCopy);
 
+  // Maximize Full Screen toggle logic
+  function toggleMaximize(sectionId, btnId) {
+    const section = document.getElementById(sectionId);
+    const btn = document.getElementById(btnId);
+    const isMax = section.classList.toggle("maximized");
+    document.body.classList.toggle("section-maximized", isMax);
+    btn.textContent = isMax ? "✕ Minimize" : "⛶ Full Screen";
+    // Force browser window redraw to ensure sticky table headers align correctly
+    window.dispatchEvent(new Event("resize"));
+  }
+
+  document.getElementById("maximizeResultsBtn").addEventListener("click", () => {
+    toggleMaximize("results", "maximizeResultsBtn");
+  });
+
+  document.getElementById("maximizeChecklistBtn").addEventListener("click", () => {
+    toggleMaximize("excelChecklist", "maximizeChecklistBtn");
+  });
+
+  // ESC key to exit full screen
+  window.addEventListener("keydown", e => {
+    if (e.key === "Escape") {
+      const maxed = document.querySelector(".results-section.maximized");
+      if (maxed) {
+        maxed.classList.remove("maximized");
+        document.body.classList.remove("section-maximized");
+        const btnR = document.getElementById("maximizeResultsBtn");
+        if (btnR) btnR.textContent = "⛶ Full Screen";
+        const btnC = document.getElementById("maximizeChecklistBtn");
+        if (btnC) btnC.textContent = "⛶ Full Screen";
+        window.dispatchEvent(new Event("resize"));
+      }
+    }
+  });
+
 
 
   // Dialog click-outside-to-close

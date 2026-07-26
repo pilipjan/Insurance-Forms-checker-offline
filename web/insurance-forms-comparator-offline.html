@@ -188,7 +188,8 @@ canvas { display: block; width: 100%; max-height: 240px; margin-top: 12px; }
 textarea { width: 100%; height: 210px; margin: 12px 0; padding: 12px; border: 1px solid var(--line); border-radius: 8px; resize: vertical; color: var(--ink); background: #fbfdff; line-height: 1.4; }
 
 /* ===== TABLES ===== */
-.preview-table-wrap, .results-table-wrap { overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
+.preview-table-wrap { overflow: auto; border: 1px solid var(--line); border-radius: 8px; max-height: 320px; }
+.results-table-wrap { overflow: auto; border: 1px solid var(--line); border-radius: 8px; max-height: 480px; }
 table { width: 100%; border-collapse: collapse; min-width: 680px; }
 th, td { padding: 9px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; font-size: 13px; }
 th { background: #f1f5f9; color: #334155; font-weight: 800; position: sticky; top: 0; z-index: 1; }
@@ -461,6 +462,40 @@ td.cell-copy.cell-flashed {
   font-weight: 700;
 }
 
+/* ===== MAXIMIZED FULL SCREEN VIEWS ===== */
+.results-section.maximized {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 9999 !important;
+  background: var(--panel) !important;
+  margin: 0 !important;
+  padding: 20px 24px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  box-sizing: border-box !important;
+}
+
+body.section-maximized {
+  overflow: hidden !important; /* Disable main body scrolling */
+}
+
+.results-section.maximized .results-table-wrap {
+  max-height: none !important;
+  flex: 1 !important;
+  margin: 12px 0 0 0 !important;
+  height: auto !important;
+}
+
+.results-section.maximized .results-section-head,
+.results-section.maximized .section-head {
+  padding: 0 0 12px 0 !important;
+  border-bottom: 1px solid var(--line) !important;
+  flex-shrink: 0 !important;
+}
+
 
 </style>
   </head>
@@ -671,6 +706,7 @@ td.cell-copy.cell-flashed {
               <button class="btn secondary small" id="exportExcelBtn" type="button">⬇ Excel</button>
               <button class="btn secondary small" id="exportJsonBtn" type="button">⬇ JSON</button>
               <button class="btn primary small" id="smartExportBtn" type="button">✨ Smart Export</button>
+              <button class="btn secondary small" id="maximizeResultsBtn" type="button" style="font-weight:700; border-color:var(--accent);">⛶ Full Screen</button>
             </div>
           </div>
 
@@ -748,6 +784,7 @@ td.cell-copy.cell-flashed {
               </div>
               <button class="btn secondary" id="copyExcelBtn" type="button">Copy for Excel</button>
               <button class="btn secondary" id="downloadTsvBtn" type="button">Download TSV</button>
+              <button class="btn secondary" id="maximizeChecklistBtn" type="button" style="font-weight:700; border-color:var(--accent);">⛶ Full Screen</button>
             </div>
           </div>
           <div class="results-table-wrap" style="margin:12px 16px 16px;">
@@ -2484,6 +2521,41 @@ td.cell-copy.cell-flashed {
 
   // Checklist cell-click copy (delegated)
   el.excelChecklistBody.addEventListener("click", handleCellCopy);
+
+  // Maximize Full Screen toggle logic
+  function toggleMaximize(sectionId, btnId) {
+    const section = document.getElementById(sectionId);
+    const btn = document.getElementById(btnId);
+    const isMax = section.classList.toggle("maximized");
+    document.body.classList.toggle("section-maximized", isMax);
+    btn.textContent = isMax ? "✕ Minimize" : "⛶ Full Screen";
+    // Force browser window redraw to ensure sticky table headers align correctly
+    window.dispatchEvent(new Event("resize"));
+  }
+
+  document.getElementById("maximizeResultsBtn").addEventListener("click", () => {
+    toggleMaximize("results", "maximizeResultsBtn");
+  });
+
+  document.getElementById("maximizeChecklistBtn").addEventListener("click", () => {
+    toggleMaximize("excelChecklist", "maximizeChecklistBtn");
+  });
+
+  // ESC key to exit full screen
+  window.addEventListener("keydown", e => {
+    if (e.key === "Escape") {
+      const maxed = document.querySelector(".results-section.maximized");
+      if (maxed) {
+        maxed.classList.remove("maximized");
+        document.body.classList.remove("section-maximized");
+        const btnR = document.getElementById("maximizeResultsBtn");
+        if (btnR) btnR.textContent = "⛶ Full Screen";
+        const btnC = document.getElementById("maximizeChecklistBtn");
+        if (btnC) btnC.textContent = "⛶ Full Screen";
+        window.dispatchEvent(new Event("resize"));
+      }
+    }
+  });
 
 
 
