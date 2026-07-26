@@ -6,10 +6,11 @@
     <title>Insurance Forms Comparator</title>
     <meta
       name="description"
-      content="Offline-capable browser comparator for insurance forms and endorsements schedules."
+      content="Offline-capable browser comparator for insurance forms and endorsements schedules. v2.0"
     />
     <meta name="theme-color" content="#111827" />
     <style>
+/* ===== DESIGN TOKENS ===== */
 :root {
   --bg: #f4f8ff;
   --panel: #ffffff;
@@ -22,15 +23,19 @@
   --accent: #ff7a1a;
   --accent-dark: #e35f00;
   --green: #15803d;
-  --green-bg: #dcfce7;
   --yellow: #a16207;
-  --yellow-bg: #fef9c3;
   --red: #b91c1c;
-  --red-bg: #fee2e2;
   --orange: #c2410c;
-  --orange-bg: #ffedd5;
   --gray-bg: #e5e7eb;
   --shadow: 0 18px 45px rgba(40, 126, 228, 0.1);
+  /* color strip colors */
+  --s-match:   #15803d;
+  --s-added:   #ca8a04;
+  --s-removed: #dc2626;
+  --s-changed: #ea580c;
+  --s-desc-changed: #8b5cf6;
+  --s-typo:         #d946ef;
+  --s-unknown: #64748b;
 }
 
 :root[data-theme="dark"] {
@@ -45,608 +50,429 @@
   --accent: #fb923c;
   --accent-dark: #f97316;
   --green: #86efac;
-  --green-bg: #123421;
   --yellow: #fde68a;
-  --yellow-bg: #3d330b;
   --red: #fca5a5;
-  --red-bg: #3d1618;
   --orange: #fdba74;
-  --orange-bg: #3f2411;
   --gray-bg: #273142;
   --shadow: 0 18px 45px rgba(0, 0, 0, 0.28);
+  --s-match:   #4ade80;
+  --s-added:   #fbbf24;
+  --s-removed: #f87171;
+  --s-changed: #fb923c;
+  --s-desc-changed: #a78bfa;
+  --s-typo:         #f472b6;
+  --s-unknown: #94a3b8;
 }
 
-* {
-  box-sizing: border-box;
-}
+/* ===== BASE ===== */
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: Aptos, "Segoe UI", Arial, sans-serif; }
+button, input, textarea { font: inherit; }
 
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--ink);
-  font-family: Aptos, "Segoe UI", Arial, sans-serif;
-}
-
-:root[data-theme="dark"] .sidebar {
-  background: linear-gradient(180deg, #123b74 0%, #0b2c59 55%, #081f3d 100%);
-}
-
-:root[data-theme="dark"] .brand-mark {
-  background: #eaf4ff;
-  color: #0f5fb9;
-}
-
-:root[data-theme="dark"] .nav-list a {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-:root[data-theme="dark"] .privacy-banner {
-  background: #102647;
-  border-color: #1e5da8;
-  color: #dbeafe;
-}
-
-:root[data-theme="dark"] .privacy-banner strong,
-:root[data-theme="dark"] .privacy-banner span {
-  color: #e5eefb;
-}
-
-:root[data-theme="dark"] .memory-banner {
-  background: #111827;
-  border-color: #26364f;
-}
-
+/* ===== DARK MODE SIDEBAR ===== */
+:root[data-theme="dark"] .sidebar { background: linear-gradient(180deg, #123b74 0%, #0b2c59 55%, #081f3d 100%); }
+:root[data-theme="dark"] .brand-mark { background: #eaf4ff; color: #0f5fb9; }
+:root[data-theme="dark"] .nav-list a { background: rgba(255,255,255,0.1); }
+:root[data-theme="dark"] .privacy-banner { background: #102647; border-color: #1e5da8; color: #dbeafe; }
+:root[data-theme="dark"] .privacy-banner strong, :root[data-theme="dark"] .privacy-banner span { color: #e5eefb; }
+:root[data-theme="dark"] .memory-banner { background: #111827; border-color: #26364f; }
 :root[data-theme="dark"] textarea,
-:root[data-theme="dark"] input,
+:root[data-theme="dark"] input:not([type="checkbox"]),
 :root[data-theme="dark"] select,
-:root[data-theme="dark"] .btn.secondary {
-  background: #0f172a;
-  border-color: #2c3f5f;
-  color: #e5eefb;
-}
+:root[data-theme="dark"] .btn.secondary { background: #0f172a; border-color: #2c3f5f; color: #e5eefb; }
+:root[data-theme="dark"] th { background: #1f2d44; color: #e5eefb; }
+:root[data-theme="dark"] .result-table th:nth-child(-n+3) { background: #1d4ed8; }
+:root[data-theme="dark"] dialog { background: var(--panel); color: var(--ink); border-color: var(--line); }
 
-:root[data-theme="dark"] th {
-  background: #1f2d44;
-  color: #e5eefb;
-}
-
-:root[data-theme="dark"] .result-table th:nth-child(-n + 3) {
-  background: #1d4ed8;
-}
-
-:root[data-theme="dark"] tr.status-match td:nth-child(-n + 3) {
-  background: #1b5e33;
-}
-
-:root[data-theme="dark"] tr.status-added td:nth-child(-n + 3) {
-  background: #6d5408;
-}
-
-:root[data-theme="dark"] tr.status-removed td:nth-child(-n + 3) {
-  background: #6f1d1d;
-}
-
-:root[data-theme="dark"] tr.status-edition-changed td:nth-child(-n + 3),
-:root[data-theme="dark"] tr.status-revised td:nth-child(-n + 3) {
-  background: #7c3d12;
-}
-
-:root[data-theme="dark"] tr.status-unknown-format td:nth-child(-n + 3),
-:root[data-theme="dark"] tr.status-unknown td:nth-child(-n + 3) {
-  background: #334155;
-}
-
-button,
-input,
-textarea {
-  font: inherit;
-}
-
+/* ===== LAYOUT ===== */
 .app-shell {
   display: grid;
-  grid-template-columns: 300px minmax(0, 1fr);
+  grid-template-columns: 300px minmax(0,1fr);
   min-height: 100vh;
+  transition: grid-template-columns 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
-
 .sidebar {
-  background: linear-gradient(180deg, #287ee4 0%, #0f5fb9 54%, #184f8f 100%);
+  background: linear-gradient(180deg,#287ee4 0%,#0f5fb9 54%,#184f8f 100%);
   color: #f8fafc;
   padding: 24px;
-}
-
-.brand {
-  display: flex;
-  gap: 14px;
-  align-items: center;
-}
-
-.brand-mark {
-  display: grid;
-  width: 44px;
-  height: 44px;
-  place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  background: #ffffff;
-  color: #287ee4;
-  border-radius: 8px;
-  font-weight: 800;
-}
-
-.brand h1 {
-  margin: 0;
-  font-size: 18px;
-  line-height: 1.2;
-}
-
-.brand p,
-.side-panel p {
-  margin: 4px 0 0;
-  color: #cbd5e1;
-  font-size: 13px;
-}
-
-.nav-list {
-  display: grid;
-  gap: 8px;
-  margin: 28px 0;
-}
-
-.nav-list a {
-  color: #ffffff;
-  text-decoration: none;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.14);
-}
-
-.side-panel {
-  padding-top: 18px;
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
-}
-
-.side-panel h2 {
-  margin: 0 0 10px;
-  font-size: 14px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.side-panel ol {
-  margin: 0;
-  padding-left: 18px;
-  color: #e2e8f0;
-  line-height: 1.6;
-  font-size: 13px;
-}
-
-.compact {
-  margin-top: 22px;
-}
-
-.main {
-  padding: 24px;
+  width: 300px;
   min-width: 0;
+  overflow: hidden;
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), padding 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease, min-width 0.25s ease;
 }
-
-.topbar,
-.section-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+.app-shell.sidebar-collapsed {
+  grid-template-columns: 0px minmax(0,1fr);
 }
-
-.eyebrow {
-  margin: 0 0 4px;
-  color: var(--blue);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+.app-shell.sidebar-collapsed .sidebar {
+  width: 0 !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  opacity: 0 !important;
+  overflow: hidden !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
+.brand { display: flex; gap: 14px; align-items: center; }
+.brand-mark { display: grid; width: 44px; height: 44px; place-items: center; border: 1px solid rgba(255,255,255,0.24); background: #fff; color: #287ee4; border-radius: 8px; font-weight: 800; }
+.brand h1 { margin: 0; font-size: 18px; line-height: 1.2; }
+.brand p, .side-panel p { margin: 4px 0 0; color: #cbd5e1; font-size: 13px; }
+.nav-list { display: grid; gap: 8px; margin: 28px 0; }
+.nav-list a { color: #fff; text-decoration: none; padding: 10px 12px; border-radius: 8px; background: rgba(255,255,255,0.14); }
+.side-panel { padding-top: 18px; border-top: 1px solid rgba(255,255,255,0.15); }
+.side-panel h2 { margin: 0 0 10px; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; }
+.side-panel ol { margin: 0; padding-left: 18px; color: #e2e8f0; line-height: 1.6; font-size: 13px; }
+.compact { margin-top: 20px; }
+.main { padding: 24px; min-width: 0; }
+.topbar, .section-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.eyebrow { margin: 0 0 4px; color: var(--blue); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.topbar h2, .section-head h3 { margin: 0; }
+.topbar h2 { font-size: 26px; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px; }
+.topbar { border-bottom: 4px solid var(--accent); padding-bottom: 18px; }
 
-.topbar h2,
-.section-head h3 {
-  margin: 0;
-}
+/* ===== BANNERS ===== */
+.privacy-banner, .memory-banner { margin: 18px 0 0; padding: 12px 14px; border: 1px solid #bfdbfe; border-radius: 8px; background: #eff6ff; color: #1e3a8a; line-height: 1.45; }
+.privacy-banner strong { color: #172033; }
+.privacy-banner span { display: inline-block; margin-left: 8px; color: #475569; font-size: 13px; }
+.memory-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #fff; color: var(--ink); }
+.memory-banner span { margin-left: 8px; color: var(--muted); font-size: 13px; }
 
-.topbar h2 {
-  font-size: 26px;
-}
+/* ===== UTILITIES ===== */
+.hidden { display: none !important; }
+.collapsed-doc textarea, .collapsed-doc .preview-table-wrap { display: none; }
+.collapsed-doc { box-shadow: none; }
+.section-note { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
 
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
+/* ===== BUTTONS ===== */
+.btn { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line); background: #fff; color: var(--ink); padding: 10px 14px; border-radius: 8px; cursor: pointer; font-weight: 700; text-decoration: none; transition: background 0.15s, border-color 0.15s; white-space: nowrap; }
+.btn:hover { border-color: #93c5fd; }
+.btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn.primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
+.btn.secondary { background: #f8fafc; }
+.btn.small { padding: 6px 10px; font-size: 12px; }
+.btn.danger { color: var(--red); border-color: #fecaca; background: #fff7f7; }
+.btn.toggle-on { background: var(--accent) !important; color: #fff !important; border-color: var(--accent-dark) !important; }
+.select-label { align-self: center; color: var(--muted); font-size: 13px; font-weight: 700; }
+select { min-height: 38px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); padding: 0 10px; font: inherit; }
 
-.privacy-banner,
-.memory-banner {
-  margin: 18px 0 0;
-  padding: 12px 14px;
-  border: 1px solid #bfdbfe;
-  border-radius: 8px;
-  background: #eff6ff;
-  color: #1e3a8a;
-  line-height: 1.45;
-}
+/* ===== METRICS ===== */
+.metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px,1fr)); gap: 12px; margin: 22px 0; }
+.metric, .chart-panel, .policy-pane, .results-section, .settings-section { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); }
+.metric { padding: 14px; position: relative; overflow: hidden; }
+.metric::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+.metric.good::after { background: var(--s-match); }
+.metric.added::after { background: var(--s-added); }
+.metric.removed::after { background: var(--s-removed); }
+.metric.changed::after { background: var(--s-changed); }
+.metric.desc-changed::after { background: var(--s-desc-changed); }
+.metric.typo::after { background: var(--s-typo); }
+.metric span { display: block; min-height: 34px; color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; }
+.metric strong { font-size: 26px; }
+.metric.good strong { color: var(--green); }
+.metric.added strong { color: var(--yellow); }
+.metric.removed strong { color: var(--red); }
+.metric.changed strong { color: var(--orange); }
+.metric.desc-changed strong { color: #8b5cf6; }
+:root[data-theme="dark"] .metric.desc-changed strong { color: #a78bfa; }
+.metric.typo strong { color: #d946ef; }
+:root[data-theme="dark"] .metric.typo strong { color: #f472b6; }
+.metric.unknown strong { color: #475569; }
 
-.privacy-banner strong {
-  color: #172033;
-}
+/* ===== GRIDS ===== */
+.dashboard-grid, .workspace { display: grid; grid-template-columns: 0.8fr 1.2fr; gap: 16px; margin-bottom: 16px; }
+.chart-panel, .policy-pane, .results-section, .settings-section { padding: 16px; min-width: 0; }
+.section-head span { color: var(--muted); font-size: 13px; }
+canvas { display: block; width: 100%; max-height: 240px; margin-top: 12px; }
 
-.privacy-banner span {
-  display: inline-block;
-  margin-left: 8px;
-  color: #475569;
-  font-size: 13px;
-}
+/* ===== TEXTAREA ===== */
+textarea { width: 100%; height: 210px; margin: 12px 0; padding: 12px; border: 1px solid var(--line); border-radius: 8px; resize: vertical; color: var(--ink); background: #fbfdff; line-height: 1.4; }
 
-.memory-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  background: #ffffff;
-  color: var(--ink);
-}
-
-.memory-banner span {
-  margin-left: 8px;
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.hidden {
-  display: none;
-}
-
-.collapsed-doc textarea,
-.collapsed-doc .preview-table-wrap {
-  display: none;
-}
-
-.collapsed-doc {
-  box-shadow: none;
-}
-
-.section-note {
-  margin: 6px 0 0;
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  border: 1px solid var(--line);
-  background: #fff;
-  color: var(--ink);
-  padding: 10px 14px;
-  border-radius: 8px;
+/* ===== TABLES ===== */
+.preview-table-wrap, .results-table-wrap { overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
+table { width: 100%; border-collapse: collapse; min-width: 680px; }
+th, td { padding: 9px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; font-size: 13px; }
+th { background: #f1f5f9; color: #334155; font-weight: 800; position: sticky; top: 0; z-index: 1; }
+.result-table th:nth-child(-n+3) { background: var(--blue-dark); color: #f8fafc; }
+.copyable-header {
   cursor: pointer;
-  font-weight: 700;
-  text-decoration: none;
+  transition: background-color 0.15s, color 0.15s;
+}
+.copyable-header:hover {
+  background-color: var(--accent) !important;
+  color: #fff !important;
+}
+.copyable-header:active {
+  background-color: var(--accent-dark) !important;
+}
+.header-copied {
+  background-color: #16a34a !important;
+  color: #fff !important;
 }
 
-.btn:hover {
+/* Group header rows */
+.result-group-row td { background: linear-gradient(90deg, var(--blue-dark), var(--blue)) !important; color: #f8fafc; font-weight: 800; letter-spacing: 0.01em; }
+.result-group-button { border: 0; background: transparent; color: inherit; cursor: pointer; font: inherit; font-weight: 800; padding: 0; }
+.result-group-meta { color: #eaf4ff; font-weight: 600; margin-left: 10px; font-size: 12px; }
+
+/* ===== V2.0 COLOR STRIP ROWS ===== */
+/* Subtle tint + 4px left border on first TD */
+tr.status-match             { background: rgba(21,128,61,0.05); }
+tr.status-match td:first-child             { border-left: 4px solid var(--s-match); }
+tr.status-added             { background: rgba(202,138,4,0.07); }
+tr.status-added td:first-child             { border-left: 4px solid var(--s-added); }
+tr.status-removed           { background: rgba(220,38,38,0.07); }
+tr.status-removed td:first-child           { border-left: 4px solid var(--s-removed); }
+tr.status-edition-changed,
+tr.status-revised           { background: rgba(234,88,12,0.06); }
+tr.status-edition-changed td:first-child,
+tr.status-revised td:first-child           { border-left: 4px solid var(--s-changed); }
+tr.status-description-changed { background: rgba(139,92,246,0.05); }
+tr.status-description-changed td:first-child { border-left: 4px solid var(--s-desc-changed); }
+tr.status-possible-typo     { background: rgba(217,70,239,0.05); }
+tr.status-possible-typo td:first-child { border-left: 4px solid var(--s-typo); }
+tr.status-unknown-format,
+tr.status-unknown           { background: rgba(100,116,139,0.06); }
+tr.status-unknown-format td:first-child,
+tr.status-unknown td:first-child           { border-left: 4px solid var(--s-unknown); }
+
+/* Dark mode subtle tints */
+:root[data-theme="dark"] tr.status-match           { background: rgba(74,222,128,0.06); }
+:root[data-theme="dark"] tr.status-added           { background: rgba(251,191,36,0.08); }
+:root[data-theme="dark"] tr.status-removed         { background: rgba(248,113,113,0.08); }
+:root[data-theme="dark"] tr.status-edition-changed,
+:root[data-theme="dark"] tr.status-revised         { background: rgba(251,146,60,0.08); }
+:root[data-theme="dark"] tr.status-description-changed { background: rgba(167,139,250,0.08); }
+:root[data-theme="dark"] tr.status-possible-typo     { background: rgba(244,114,182,0.08); }
+:root[data-theme="dark"] tr.status-unknown-format,
+:root[data-theme="dark"] tr.status-unknown         { background: rgba(148,163,184,0.08); }
+
+/* Pinned rows */
+tr.row-pinned { outline: 1px dashed var(--accent); outline-offset: -1px; }
+
+/* ===== RESULTS SECTION HEAD ===== */
+.results-section { margin-bottom: 16px; }
+.results-section-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.results-section-head h3 { margin: 0; flex-shrink: 0; }
+.results-copy-group { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; justify-content: flex-end; align-items: center; }
+
+/* ===== FILTER BAR ===== */
+.filter-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 16px; background: var(--bg); border-bottom: 1px solid var(--line); }
+.filter-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px; border: 1.5px solid var(--line); background: var(--panel); cursor: pointer; font-size: 12px; font-weight: 700; color: var(--ink); transition: opacity 0.15s, border-color 0.15s; user-select: none; }
+.chip:hover { border-color: var(--blue); }
+.chip.off { opacity: 0.38; }
+.chip-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.chip-match  .chip-dot { background: var(--s-match); }
+.chip-added  .chip-dot { background: var(--s-added); }
+.chip-removed .chip-dot { background: var(--s-removed); }
+.chip-changed .chip-dot { background: var(--s-changed); }
+.chip-desc-changed .chip-dot { background: var(--s-desc-changed); }
+.chip-typo .chip-dot { background: var(--s-typo); }
+.chip-unknown .chip-dot { background: var(--s-unknown); }
+.filter-search-wrap { flex: 1; min-width: 140px; position: relative; }
+.filter-search-wrap input[type="search"] { width: 100%; padding: 6px 12px 6px 30px; border: 1.5px solid var(--line); border-radius: 20px; background: var(--panel); color: var(--ink); font-size: 13px; outline: none; transition: border-color 0.15s; }
+.filter-search-wrap input[type="search"]:focus { border-color: var(--blue); box-shadow: 0 0 0 2px rgba(40,126,228,0.15); }
+.search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 13px; pointer-events: none; }
+.filter-actions { display: flex; gap: 5px; flex-shrink: 0; }
+
+/* ===== ROW ACTION BUTTONS ===== */
+.pin-btn, .note-btn { background: none; border: none; cursor: pointer; font-size: 14px; padding: 1px 3px; color: var(--muted); transition: transform 0.12s, color 0.12s; line-height: 1; }
+.pin-btn:hover  { transform: scale(1.2); }
+.note-btn:hover { transform: scale(1.15); color: var(--blue); }
+.pin-btn.on   { color: #f59e0b; }
+.note-btn.on  { color: var(--accent); }
+.row-actions-td { white-space: nowrap; text-align: right; min-width: 60px; }
+
+/* ===== EDITABLE CELLS ===== */
+[contenteditable] { border-radius: 3px; padding: 1px 3px; margin: -1px -3px; outline: none; }
+[contenteditable]:focus { background: var(--panel); box-shadow: 0 0 0 2px var(--blue); border-radius: 3px; }
+
+/* ===== SEARCH HIGHLIGHT ===== */
+mark.hl { background: #fef08a; color: #1e293b; border-radius: 2px; padding: 0 1px; }
+:root[data-theme="dark"] mark.hl { background: #713f12; color: #fef3c7; }
+
+/* ===== INLINE DIFF HIGHLIGHTING ===== */
+.diff-removed-inline {
+  background-color: rgba(220, 38, 38, 0.12);
+  color: #c2410c;
+  text-decoration: line-through;
+  padding: 1px 3px;
+  border-radius: 4px;
+  font-weight: 600;
+  border: 1px dashed rgba(220, 38, 38, 0.3);
+}
+:root[data-theme="dark"] .diff-removed-inline {
+  background-color: rgba(239, 68, 68, 0.18);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.diff-added-inline {
+  background-color: rgba(21, 128, 61, 0.12);
+  color: #166534;
+  padding: 1px 3px;
+  border-radius: 4px;
+  font-weight: 700;
+  border: 1px dashed rgba(21, 128, 61, 0.3);
+}
+:root[data-theme="dark"] .diff-added-inline {
+  background-color: rgba(74, 222, 128, 0.18);
+  color: #86efac;
+  border-color: rgba(74, 222, 128, 0.4);
+}
+
+/* ===== SIDE-BY-SIDE TABLE ===== */
+.sbs-table { min-width: 560px; }
+.sbs-table th { background: var(--blue-dark); color: #f8fafc; }
+:root[data-theme="dark"] .sbs-table th { background: #1d4ed8; }
+.sbs-removed { color: var(--red); }
+.sbs-added   { color: var(--green); font-weight: 700; }
+.sbs-changed { color: var(--orange); }
+.sbs-empty   { color: var(--muted); font-style: italic; font-size: 12px; }
+
+/* ===== DIALOGS ===== */
+dialog { padding: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--ink); box-shadow: 0 25px 60px rgba(0,0,0,0.22); }
+dialog::backdrop { background: rgba(0,0,0,0.35); backdrop-filter: blur(2px); }
+.modal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 14px; border-bottom: 1px solid var(--line); }
+.modal-header h3 { margin: 0; font-size: 16px; }
+.modal-close-btn { background: none; border: none; cursor: pointer; font-size: 18px; color: var(--muted); padding: 2px 6px; border-radius: 4px; line-height: 1; }
+.modal-close-btn:hover { background: var(--bg); color: var(--ink); }
+.modal-body { padding: 18px 20px; }
+.modal-footer { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 14px; border-top: 1px solid var(--line); margin-top: 4px; }
+
+/* Smart Export Modal */
+.smart-export-modal { width: min(500px, 94vw); }
+.export-opts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+.export-opt-lbl { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; padding: 8px 12px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--bg); transition: border-color 0.15s; }
+.export-opt-lbl:hover { border-color: var(--blue); }
+.export-opt-lbl input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; accent-color: var(--accent); }
+
+/* Note Dialog */
+.note-dialog { width: min(380px, 94vw); }
+.note-dialog-hdr { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--line); font-weight: 700; font-size: 13px; }
+.note-code-badge { font-family: monospace; background: var(--bg); padding: 1px 6px; border-radius: 4px; color: var(--blue); }
+.note-dialog textarea { width: 100%; min-height: 96px; padding: 12px 16px; border: none; border-bottom: 1px solid var(--line); background: var(--panel); color: var(--ink); font: inherit; font-size: 13px; resize: vertical; outline: none; border-radius: 0; display: block; }
+.note-dialog-ftr { padding: 10px 16px; display: flex; gap: 8px; justify-content: flex-end; }
+
+/* ===== UNDO TOAST ===== */
+.undo-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(110px); background: #1e293b; color: #f8fafc; padding: 11px 18px; border-radius: 10px; display: flex; align-items: center; gap: 14px; font-size: 13px; box-shadow: 0 8px 28px rgba(0,0,0,0.25); transition: transform 0.3s cubic-bezier(0.175,0.885,0.32,1.275); z-index: 9000; pointer-events: none; }
+.undo-toast.show { transform: translateX(-50%) translateY(0); pointer-events: auto; }
+.undo-toast button { background: var(--accent); color: #fff; border: none; border-radius: 6px; padding: 5px 12px; cursor: pointer; font: inherit; font-weight: 700; font-size: 12px; }
+.undo-toast button:hover { background: var(--accent-dark); }
+
+/* ===== KEYBOARD SHORTCUT HINTS ===== */
+.kbd { display: inline-block; padding: 1px 5px; font-size: 10px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); border-radius: 3px; line-height: 1.6; }
+.shortcuts-list { display: grid; gap: 5px; margin-top: 8px; }
+.shortcut-row { display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: #cbd5e1; }
+
+/* ===== SETTINGS ===== */
+.settings-section label { display: block; margin: 12px 0 6px; color: var(--muted); font-weight: 700; }
+.settings-section input { width: 100%; max-width: 620px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; }
+
+/* ===== COMPARE ACTION BAR ===== */
+.compare-action-bar {
+  display: flex;
+  justify-content: center;
+  margin: -4px 0 28px 0;
+}
+.large-compare-btn {
+  padding: 14px 44px;
+  font-size: 15px;
+  font-weight: 800;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(255, 122, 26, 0.24);
+  transition: transform 0.15s, background-color 0.15s, box-shadow 0.15s;
+}
+.large-compare-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgba(255, 122, 26, 0.35);
+}
+.large-compare-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 6px 15px rgba(255, 122, 26, 0.2);
+}
+.large-clear-btn {
+  padding: 14px 28px;
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: 10px;
+  margin-left: 12px;
+  transition: transform 0.15s, border-color 0.15s, background-color 0.15s;
+}
+.large-clear-btn:hover {
+  transform: translateY(-2px);
   border-color: #93c5fd;
 }
-
-.btn.primary {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
+.large-clear-btn:active {
+  transform: translateY(1px);
 }
 
-.btn.primary:hover {
-  background: var(--accent-dark);
-  border-color: var(--accent-dark);
+/* ===== RESPONSIVE ===== */
+@media (max-width: 1500px) { .workspace { grid-template-columns: 1fr; } }
+@media (max-width: 1180px) { .app-shell { grid-template-columns: 1fr; } .sidebar { position: static; } .dashboard-grid { grid-template-columns: 1fr; } }
+@media (max-width: 700px) {
+  .main, .sidebar { padding: 16px; }
+  .topbar, .section-head, .memory-banner { align-items: flex-start; flex-direction: column; }
+  .metrics { grid-template-columns: repeat(2, minmax(120px,1fr)); }
+  .export-opts-grid { grid-template-columns: 1fr; }
+  .results-copy-group { justify-content: flex-start; }
+  .filter-bar { flex-direction: column; align-items: flex-start; }
 }
 
-.btn.secondary {
-  background: #f8fafc;
-}
-
-.topbar {
-  border-bottom: 4px solid var(--accent);
-  padding-bottom: 18px;
-}
-
-.btn.small {
-  padding: 7px 10px;
-  font-size: 13px;
-}
-
-.btn.danger {
-  color: var(--red);
-  border-color: #fecaca;
-  background: #fff7f7;
-}
-
-.select-label {
-  align-self: center;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-select {
-  min-height: 42px;
-  border: 1px solid var(--line);
+/* ===== TOGGLE GROUP (checklist current/previous) ===== */
+.toggle-group {
+  display: inline-flex;
   border-radius: 8px;
-  background: #fff;
-  color: var(--ink);
-  padding: 0 10px;
-  font: inherit;
-}
-
-.metrics {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
-  gap: 12px;
-  margin: 22px 0;
-}
-
-.metric,
-.chart-panel,
-.policy-pane,
-.results-section,
-.settings-section {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  box-shadow: var(--shadow);
-}
-
-.metric {
-  padding: 14px;
-}
-
-.metric span {
-  display: block;
-  min-height: 34px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.metric strong {
-  font-size: 26px;
-}
-
-.metric.good strong {
-  color: var(--green);
-}
-
-.metric.added strong {
-  color: var(--yellow);
-}
-
-.metric.removed strong {
-  color: var(--red);
-}
-
-.metric.changed strong {
-  color: var(--orange);
-}
-
-.metric.unknown strong {
-  color: #475569;
-}
-
-.dashboard-grid,
-.workspace {
-  display: grid;
-  grid-template-columns: 0.8fr 1.2fr;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.chart-panel,
-.policy-pane,
-.results-section,
-.settings-section {
-  padding: 16px;
-  min-width: 0;
-}
-
-.section-head span {
-  color: var(--muted);
-  font-size: 13px;
-}
-
-canvas {
-  display: block;
-  width: 100%;
-  max-height: 240px;
-  margin-top: 12px;
-}
-
-textarea {
-  width: 100%;
-  height: 210px;
-  margin: 12px 0;
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  resize: vertical;
-  color: var(--ink);
-  background: #fbfdff;
-  line-height: 1.4;
-}
-
-.preview-table-wrap,
-.results-table-wrap {
-  overflow: auto;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 680px;
-}
-
-th,
-td {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--line);
-  text-align: left;
-  vertical-align: top;
-  font-size: 13px;
-}
-
-th {
-  background: #f1f5f9;
-  color: #334155;
-  font-weight: 800;
-}
-
-.result-table th:nth-child(-n + 3) {
-  background: var(--blue-dark);
-  color: #f8fafc;
-}
-
-.result-group-row td {
-  background: linear-gradient(90deg, var(--blue-dark), var(--blue)) !important;
-  color: #f8fafc;
-  font-weight: 800;
-  letter-spacing: 0.01em;
-}
-
-.result-group-button {
-  border: 0;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  font: inherit;
-  font-weight: 800;
-  padding: 0;
-}
-
-.result-group-meta {
-  color: #eaf4ff;
-  font-weight: 600;
-  margin-left: 10px;
-}
-
-tr.status-match td {
-  background: var(--green-bg);
-}
-
-tr.status-match td:nth-child(-n + 3) {
-  background: #bbf7d0;
-}
-
-tr.status-added td {
-  background: var(--yellow-bg);
-}
-
-tr.status-added td:nth-child(-n + 3) {
-  background: #fde68a;
-}
-
-tr.status-removed td {
-  background: var(--red-bg);
-}
-
-tr.status-removed td:nth-child(-n + 3) {
-  background: #fecaca;
-}
-
-tr.status-edition-changed td {
-  background: var(--orange-bg);
-}
-
-tr.status-edition-changed td:nth-child(-n + 3),
-tr.status-revised td:nth-child(-n + 3) {
-  background: #fed7aa;
-}
-
-tr.status-revised td {
-  background: var(--orange-bg);
-}
-
-tr.status-unknown-format td,
-tr.status-unknown td {
+  overflow: hidden;
+  border: 1.5px solid var(--line);
   background: var(--gray-bg);
 }
-
-tr.status-unknown-format td:nth-child(-n + 3),
-tr.status-unknown td:nth-child(-n + 3) {
-  background: #cbd5e1;
-}
-
-.results-section {
-  margin-bottom: 16px;
-}
-
-.settings-section label {
-  display: block;
-  margin: 12px 0 6px;
+.toggle-btn {
+  border: none;
+  background: transparent;
   color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 14px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.toggle-btn.active {
+  background: var(--blue-dark);
+  color: #fff;
+}
+.toggle-btn:not(.active):hover {
+  background: var(--blue);
+  color: #fff;
+}
+
+/* ===== COPYABLE TABLE CELLS ===== */
+td.cell-copy {
+  cursor: pointer;
+  transition: background 0.12s;
+}
+td.cell-copy:hover {
+  background: rgba(255, 122, 26, 0.12) !important;
+}
+td.cell-copy.cell-flashed {
+  background: rgba(22, 163, 74, 0.2) !important;
+  color: #15803d;
   font-weight: 700;
 }
 
-.settings-section input {
-  width: 100%;
-  max-width: 620px;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-}
-
-@media (max-width: 1500px) {
-  .workspace {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 1180px) {
-  .app-shell {
-    grid-template-columns: 1fr;
-  }
-
-  .sidebar {
-    position: static;
-  }
-
-  .dashboard-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 700px) {
-  .main,
-  .sidebar {
-    padding: 16px;
-  }
-
-  .topbar,
-  .section-head,
-  .memory-banner {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .metrics {
-    grid-template-columns: repeat(2, minmax(120px, 1fr));
-  }
-}
 
 </style>
   </head>
   <body>
     <div class="app-shell">
+      <!-- ===== SIDEBAR ===== -->
       <aside class="sidebar">
         <div class="brand">
           <div class="brand-mark">IF</div>
           <div>
             <h1>Insurance Forms Comparator</h1>
-            <p>Forms & Endorsements schedules</p>
+            <p>Forms &amp; Endorsements schedules</p>
           </div>
         </div>
 
@@ -659,11 +485,21 @@ tr.status-unknown td:nth-child(-n + 3) {
         <section class="side-panel">
           <h2>Workflow</h2>
           <ol>
-          <li>Paste Previous and Current schedules.</li>
-            <li>Clean & Preview both sides.</li>
+            <li>Paste Previous and Current schedules.</li>
+            <li>Clean &amp; Preview both sides.</li>
             <li>Fix OCR issues in the raw input.</li>
-          <li>Compare, then copy the Excel checklist.</li>
+            <li>Compare, then copy the Excel checklist.</li>
           </ol>
+        </section>
+
+        <section class="side-panel compact">
+          <h2>Keyboard Shortcuts</h2>
+          <div class="shortcuts-list">
+            <div class="shortcut-row"><span>Compare</span><span><kbd class="kbd">Ctrl</kbd> <kbd class="kbd">1</kbd></span></div>
+            <div class="shortcut-row"><span>Smart Export</span><span><kbd class="kbd">Ctrl</kbd> <kbd class="kbd">2</kbd></span></div>
+            <div class="shortcut-row"><span>Search</span><span><kbd class="kbd">Ctrl</kbd> <kbd class="kbd">F</kbd></span></div>
+            <div class="shortcut-row"><span>Undo Clear</span><span><kbd class="kbd">Ctrl</kbd> <kbd class="kbd">Z</kbd></span></div>
+          </div>
         </section>
 
         <section class="side-panel compact">
@@ -673,15 +509,19 @@ tr.status-unknown td:nth-child(-n + 3) {
 
         <section class="side-panel compact">
           <h2>Version</h2>
-          <p>Offline-capable web app 1.8.0</p>
+          <p>Offline-capable web app 2.0.0</p>
         </section>
       </aside>
 
+      <!-- ===== MAIN ===== -->
       <main class="main">
         <header class="topbar">
-          <div>
-            <p class="eyebrow">Commercial policy processing</p>
-            <h2>Compare Previous vs Current policy forms</h2>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <button class="btn secondary" id="toggleSidebarBtn" type="button" title="Toggle Sidebar" style="padding: 10px 12px; min-width: 42px;">☰</button>
+            <div>
+              <p class="eyebrow">Commercial policy processing</p>
+              <h2>Compare Previous vs Current policy forms</h2>
+            </div>
           </div>
           <div class="toolbar">
             <button class="btn secondary" id="loadSamplesBtn" type="button">Load Sample</button>
@@ -690,7 +530,7 @@ tr.status-unknown td:nth-child(-n + 3) {
             <button class="btn secondary" id="themeToggleBtn" type="button">Dark Mode</button>
             <button class="btn secondary" id="clearBtn" type="button">Clear</button>
             <span class="btn secondary" aria-disabled="true">Offline Copy</span>
-            <button class="btn primary" id="compareBtn" type="button">Compare Policies</button>
+            <button class="btn primary" id="compareBtn" type="button">⚡ Compare Policies</button>
           </div>
         </header>
 
@@ -706,104 +546,69 @@ tr.status-unknown td:nth-child(-n + 3) {
             <strong>Local draft restore</strong>
             <span id="memoryStatus">No saved draft yet.</span>
           </div>
-          <div class="toolbar">
-            <button class="btn secondary small" id="saveDraftBtn" type="button">Save Draft</button>
-            <button class="btn secondary small" id="clearDraftBtn" type="button">Clear Saved Draft</button>
+          <div>
+            <button class="btn secondary small" id="clearDraftBtn" type="button">Delete Save</button>
+            <button class="btn primary small" id="saveDraftBtn" type="button">Save Draft</button>
+            <button class="btn small danger" id="undoBtn" type="button" title="Recover cleared tables (Ctrl+Z)" style="display:none;">Undo Clear</button>
           </div>
         </section>
 
+        <!-- ===== METRICS ===== -->
         <section class="metrics" aria-label="Comparison summary">
-          <div class="metric">
-            <span>Previous</span>
-            <strong id="metricPrevious">0</strong>
-          </div>
-          <div class="metric">
-            <span>Current</span>
-            <strong id="metricCurrent">0</strong>
-          </div>
-          <div class="metric good">
-            <span>Matches</span>
-            <strong id="metricMatch">0</strong>
-          </div>
-          <div class="metric added">
-            <span>Added</span>
-            <strong id="metricAdded">0</strong>
-          </div>
-          <div class="metric removed">
-            <span>Removed</span>
-            <strong id="metricRemoved">0</strong>
-          </div>
-          <div class="metric changed">
-            <span>Edition Changed</span>
-            <strong id="metricChanged">0</strong>
-          </div>
-          <div class="metric unknown">
-            <span>Unknown</span>
-            <strong id="metricUnknown">0</strong>
-          </div>
-          <div class="metric">
-            <span>Completion</span>
-            <strong id="metricCompletion">0%</strong>
-          </div>
+          <div class="metric"><span>Previous</span><strong id="metricPrevious">0</strong></div>
+          <div class="metric"><span>Current</span><strong id="metricCurrent">0</strong></div>
+          <div class="metric good"><span>Matches</span><strong id="metricMatch">0</strong></div>
+          <div class="metric added"><span>Added</span><strong id="metricAdded">0</strong></div>
+          <div class="metric removed"><span>Removed</span><strong id="metricRemoved">0</strong></div>
+          <div class="metric changed"><span>Edition Changed</span><strong id="metricChanged">0</strong></div>
+          <div class="metric desc-changed"><span>Desc Changed</span><strong id="metricDescChanged">0</strong></div>
+          <div class="metric typo"><span>Possible Typo</span><strong id="metricTypo">0</strong></div>
+          <div class="metric unknown"><span>Unknown</span><strong id="metricUnknown">0</strong></div>
+          <div class="metric"><span>Completion</span><strong id="metricCompletion">0%</strong></div>
         </section>
 
+        <!-- ===== HTML CHARTS ===== -->
+        <!-- Charts side-by-side -->
         <section class="dashboard-grid">
           <div class="chart-panel">
             <div class="section-head">
               <h3>Outcome Mix</h3>
-              <span id="lastCompared">Not compared</span>
+              <span>Percentage</span>
             </div>
-            <canvas id="pieChart" width="360" height="220" aria-label="Outcome mix chart"></canvas>
+            <canvas id="pieChart" width="340" height="220" aria-label="Status distribution chart"></canvas>
           </div>
           <div class="chart-panel">
             <div class="section-head">
               <h3>Status Counts</h3>
-              <span id="comparisonTime">0.00 sec</span>
+              <span>Forms count</span>
             </div>
             <canvas id="barChart" width="560" height="220" aria-label="Status count chart"></canvas>
           </div>
         </section>
 
+        <!-- ===== WORKSPACE ===== -->
         <section class="workspace" id="workspace">
           <article class="policy-pane">
             <div class="section-head">
               <h3>Previous Policy</h3>
-              <button class="btn small" id="cleanPreviousBtn" type="button">Clean & Preview</button>
+              <button class="btn small" id="cleanPreviousBtn" type="button">Clean &amp; Preview</button>
             </div>
             <textarea id="previousInput" spellcheck="false" placeholder="Paste previous policy forms here"></textarea>
             <div class="preview-table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Status</th>
-                    <th>Code</th>
-                    <th>Edition</th>
-                    <th>Description</th>
-                  </tr>
-                </thead>
-                <tbody id="previousPreview"></tbody>
-              </table>
+              <table><thead><tr><th>Status</th><th>Code</th><th>Edition</th><th>Description</th></tr></thead>
+              <tbody id="previousPreview"></tbody></table>
             </div>
           </article>
 
           <article class="policy-pane">
             <div class="section-head">
               <h3>Current Policy</h3>
-              <button class="btn small" id="cleanCurrentBtn" type="button">Clean & Preview</button>
+              <button class="btn small" id="cleanCurrentBtn" type="button">Clean &amp; Preview</button>
             </div>
             <textarea id="currentInput" spellcheck="false" placeholder="Paste current policy forms here"></textarea>
             <div class="preview-table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Status</th>
-                    <th>Code</th>
-                    <th>Edition</th>
-                    <th>Description</th>
-                  </tr>
-                </thead>
-                <tbody id="currentPreview"></tbody>
-              </table>
+              <table><thead><tr><th>Status</th><th>Code</th><th>Edition</th><th>Description</th></tr></thead>
+              <tbody id="currentPreview"></tbody></table>
             </div>
           </article>
 
@@ -813,22 +618,13 @@ tr.status-unknown td:nth-child(-n + 3) {
               <div class="toolbar">
                 <button class="btn small" id="collapseQuoteBtn" type="button">Minimize</button>
                 <button class="btn small danger" id="removeQuoteBtn" type="button">Remove</button>
-                <button class="btn small" id="cleanQuoteBtn" type="button">Clean & Preview</button>
+                <button class="btn small" id="cleanQuoteBtn" type="button">Clean &amp; Preview</button>
               </div>
             </div>
             <textarea id="quoteInput" spellcheck="false" placeholder="Paste quote or third schedule here"></textarea>
             <div class="preview-table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Status</th>
-                    <th>Code</th>
-                    <th>Edition</th>
-                    <th>Description</th>
-                  </tr>
-                </thead>
-                <tbody id="quotePreview"></tbody>
-              </table>
+              <table><thead><tr><th>Status</th><th>Code</th><th>Edition</th><th>Description</th></tr></thead>
+              <tbody id="quotePreview"></tbody></table>
             </div>
           </article>
 
@@ -838,101 +634,188 @@ tr.status-unknown td:nth-child(-n + 3) {
               <div class="toolbar">
                 <button class="btn small" id="collapseFourthBtn" type="button">Minimize</button>
                 <button class="btn small danger" id="removeFourthBtn" type="button">Remove</button>
-                <button class="btn small" id="cleanFourthBtn" type="button">Clean & Preview</button>
+                <button class="btn small" id="cleanFourthBtn" type="button">Clean &amp; Preview</button>
               </div>
             </div>
             <textarea id="fourthInput" spellcheck="false" placeholder="Paste fourth schedule here"></textarea>
             <div class="preview-table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Status</th>
-                    <th>Code</th>
-                    <th>Edition</th>
-                    <th>Description</th>
-                  </tr>
-                </thead>
-                <tbody id="fourthPreview"></tbody>
-              </table>
+              <table><thead><tr><th>Status</th><th>Code</th><th>Edition</th><th>Description</th></tr></thead>
+              <tbody id="fourthPreview"></tbody></table>
             </div>
           </article>
         </section>
 
+        <!-- ===== COMPARE ACTION BAR ===== -->
+        <div class="compare-action-bar">
+          <button class="btn primary large-compare-btn" id="compareBtnWorkspace" type="button">⚡ Compare Policies</button>
+          <button class="btn secondary large-clear-btn" id="clearBtnWorkspace" type="button">🗑 Clear All</button>
+        </div>
+
+        <!-- ===== RESULTS SECTION ===== -->
         <section class="results-section" id="results">
-          <div class="section-head">
+          <!-- Head row: title + copy/export buttons -->
+          <div class="results-section-head">
             <h3>Comparison Results</h3>
-            <div class="toolbar">
-              <label class="select-label" for="resultViewSelect">Display / Export</label>
+            <div class="results-copy-group">
+              <label class="select-label" for="resultViewSelect">View</label>
               <select id="resultViewSelect">
                 <option value="all">All compared documents</option>
                 <option value="Current Policy">Current Policy</option>
                 <option value="Quote / 3rd Document">3rd Document</option>
                 <option value="4th Document">4th Document</option>
               </select>
-              <button class="btn secondary" id="exportCsvBtn" type="button">Export CSV</button>
-              <button class="btn secondary" id="exportExcelBtn" type="button">Export Excel</button>
-              <button class="btn secondary" id="exportJsonBtn" type="button">Export JSON</button>
+              <button class="btn secondary small" id="copyFormNumbersBtn" type="button">📋 Copy Numbers</button>
+              <button class="btn secondary small" id="copyDescriptionsBtn" type="button">📋 Descriptions</button>
+              <button class="btn secondary small" id="copyTableBtn" type="button">📋 Copy Table</button>
+              <button class="btn secondary small" id="exportCsvBtn" type="button">⬇ CSV</button>
+              <button class="btn secondary small" id="exportExcelBtn" type="button">⬇ Excel</button>
+              <button class="btn secondary small" id="exportJsonBtn" type="button">⬇ JSON</button>
+              <button class="btn primary small" id="smartExportBtn" type="button">✨ Smart Export</button>
             </div>
           </div>
-          <p class="section-note" id="exportScopeNote">Exports use the selected Display / Export view.</p>
-          <div class="results-table-wrap">
+
+          <p class="section-note" id="exportScopeNote" style="padding:4px 16px 0;">Exports use the selected view.</p>
+
+          <!-- V2.0 Filter Bar -->
+          <div class="filter-bar" id="filterBar">
+            <div class="filter-chips">
+              <button class="chip chip-match"   id="chipMatch"   type="button"><span class="chip-dot"></span> Match <span id="cntMatch">(0)</span></button>
+              <button class="chip chip-added"   id="chipAdded"   type="button"><span class="chip-dot"></span> Added <span id="cntAdded">(0)</span></button>
+              <button class="chip chip-removed" id="chipRemoved" type="button"><span class="chip-dot"></span> Removed <span id="cntRemoved">(0)</span></button>
+              <button class="chip chip-changed" id="chipChanged" type="button"><span class="chip-dot"></span> Changed <span id="cntChanged">(0)</span></button>
+              <button class="chip chip-desc-changed" id="chipDescChanged" type="button"><span class="chip-dot"></span> Desc Changed <span id="cntDescChanged">(0)</span></button>
+              <button class="chip chip-typo" id="chipTypo" type="button"><span class="chip-dot"></span> Possible Typo <span id="cntTypo">(0)</span></button>
+              <button class="chip chip-unknown" id="chipUnknown" type="button"><span class="chip-dot"></span> Unknown <span id="cntUnknown">(0)</span></button>
+            </div>
+            <div class="filter-search-wrap">
+              <span class="search-icon">🔍</span>
+              <input type="search" id="resultsSearch" placeholder="Search forms... (Ctrl+F)" autocomplete="off">
+            </div>
+            <div class="filter-actions">
+              <button class="btn small" id="diffsOnlyBtn" type="button">Diffs Only</button>
+              <button class="btn small" id="sideBySideBtn" type="button">Side by Side</button>
+            </div>
+          </div>
+
+          <!-- Regular results table -->
+          <div class="results-table-wrap" id="resultsTableWrap" style="margin:0 16px 16px;">
             <table class="result-table">
               <thead>
                 <tr>
                   <th>Status</th>
-                  <th>Compared Document</th>
-                  <th>Normalized Code</th>
+                  <th>Document</th>
+                  <th class="copyable-header" id="hdrCopyCode" title="Click to copy Code column">Code 📋</th>
                   <th>Original Previous</th>
-                  <th>Original Compared Document</th>
-                  <th>Description</th>
-                  <th>Edition</th>
-                  <th>Notes</th>
+                  <th>Original Current</th>
+                  <th class="copyable-header" id="hdrCopyDesc" title="Click to copy Description column">Description 📋</th>
+                  <th class="copyable-header" id="hdrCopyEdit" title="Click to copy Edition column">Edition 📋</th>
+                  <th>System Note</th>
+                  <th style="text-align:right;">Actions</th>
                 </tr>
               </thead>
               <tbody id="resultsBody"></tbody>
             </table>
           </div>
+
+          <!-- Side-by-side table (hidden by default) -->
+          <div class="results-table-wrap hidden" id="sbsWrap" style="margin:0 16px 16px;">
+            <table class="sbs-table">
+              <thead>
+                <tr>
+                  <th style="width:90px;">Status</th>
+                  <th class="copyable-header" id="hdrSbsPrev" title="Click to copy Previous Form column">Previous Form 📋</th>
+                  <th class="copyable-header" id="hdrSbsCurr" title="Click to copy Current Form column">Current Form 📋</th>
+                  <th style="width:70px;text-align:right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="sbsBody"></tbody>
+            </table>
+          </div>
         </section>
 
+        <!-- ===== EXCEL CHECKLIST ===== -->
         <section class="results-section" id="excelChecklist">
-          <div class="section-head">
+          <div class="section-head" style="padding:12px 16px;border-bottom:1px solid var(--line);">
             <div>
               <h3>Excel Paste Checklist</h3>
-              <p class="section-note">Copy these rows and paste directly into Excel: Form / Description, Edition, Status, Source.</p>
+              <p class="section-note">Click any column header to copy that column. Click a row cell to copy that cell.</p>
             </div>
-            <div class="toolbar">
+            <div class="toolbar" style="gap:8px;align-items:center;">
+              <span style="font-size:12px;color:var(--muted);white-space:nowrap;">Show form from:</span>
+              <div class="toggle-group" id="checklistViewToggle">
+                <button class="toggle-btn active" id="clToggleCurrent" type="button" data-view="current">Current</button>
+                <button class="toggle-btn" id="clTogglePrevious" type="button" data-view="previous">Previous</button>
+              </div>
               <button class="btn secondary" id="copyExcelBtn" type="button">Copy for Excel</button>
               <button class="btn secondary" id="downloadTsvBtn" type="button">Download TSV</button>
             </div>
           </div>
-          <div class="results-table-wrap">
+          <div class="results-table-wrap" style="margin:12px 16px 16px;">
             <table>
-              <thead>
-                <tr>
-                  <th>Form / Description</th>
-                  <th>Edition</th>
-                  <th>Status</th>
-                  <th>Compared Document</th>
-                </tr>
-              </thead>
+              <thead><tr>
+                <th class="copyable-header" id="hdrClForm" title="Click to copy Form/Description column">Form / Description 📋</th>
+                <th class="copyable-header" id="hdrClEdition" title="Click to copy Edition column">Edition 📋</th>
+                <th class="copyable-header" id="hdrClStatus" title="Click to copy Status column">Status 📋</th>
+                <th class="copyable-header" id="hdrClSource" title="Click to copy Compared Document column">Compared Document 📋</th>
+              </tr></thead>
               <tbody id="excelChecklistBody"></tbody>
             </table>
           </div>
         </section>
 
+        <!-- ===== SETTINGS ===== -->
         <section class="settings-section" id="settings">
           <div class="section-head">
             <h3>Settings</h3>
             <button class="btn small" id="applySettingsBtn" type="button">Apply Prefixes</button>
           </div>
           <label for="prefixInput">Known prefixes</label>
-          <input
-            id="prefixInput"
-            type="text"
-            value="AG, AP, B, BM, BP, CA, CF, CG, CL, CM, CP, CR, CU, CX, CY, DE, DL, DP, DS, EB, EP, FB, FL, FO, FP, GI, HO, IH, IL, IM, IN, MC, MI, MM, MP, OP, PM, PP, PR, SE, SF, TC, WC"
-          />
+          <input id="prefixInput" type="text" value="AG, AP, B, BM, BP, CA, CF, CG, CL, CM, CP, CR, CU, CX, CY, DE, DL, DP, DS, EB, EP, FB, FL, FO, FP, GI, HO, IH, IL, IM, IN, MC, MI, MM, MP, OP, PM, PP, PR, SE, SF, TC, WC" />
         </section>
       </main>
+    </div>
+
+    <!-- ===== SMART EXPORT MODAL ===== -->
+    <dialog id="smartExportModal" class="smart-export-modal">
+      <div class="modal-header">
+        <h3>✨ Smart Export</h3>
+        <button class="modal-close-btn" id="closeSmartExportBtn" type="button">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="export-opts-grid">
+          <label class="export-opt-lbl"><input type="checkbox" id="optDescriptions" checked> Include Descriptions</label>
+          <label class="export-opt-lbl"><input type="checkbox" id="optMatches" checked> Include Matches</label>
+          <label class="export-opt-lbl"><input type="checkbox" id="optStatus" checked> Include Status</label>
+          <label class="export-opt-lbl"><input type="checkbox" id="optUserNotes"> Include User Notes</label>
+          <label class="export-opt-lbl"><input type="checkbox" id="optDiffsOnly"> Differences Only</label>
+          <label class="export-opt-lbl"><input type="checkbox" id="optSource"> Include Source Doc</label>
+        </div>
+        <div class="modal-footer">
+          <button class="btn primary" id="smCopyExcelBtn" type="button">📋 Copy for Excel</button>
+          <button class="btn secondary" id="smCopyNumbersBtn" type="button">📋 Numbers Only</button>
+          <button class="btn secondary" id="smDownloadCsvBtn" type="button">⬇ CSV</button>
+          <button class="btn secondary" id="smDownloadExcelBtn" type="button">⬇ Excel</button>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- ===== NOTE DIALOG ===== -->
+    <dialog id="noteDialog" class="note-dialog">
+      <div class="note-dialog-hdr">
+        <span>📝 Note — <span id="noteCodeBadge" class="note-code-badge"></span></span>
+        <button class="modal-close-btn" id="closeNoteBtn" type="button">✕</button>
+      </div>
+      <textarea id="noteTextarea" placeholder="Type your note here… (Ctrl+Enter to save)"></textarea>
+      <div class="note-dialog-ftr">
+        <button class="btn secondary small" id="clearNoteBtn" type="button">Clear</button>
+        <button class="btn primary small" id="saveNoteBtn" type="button">Save Note</button>
+      </div>
+    </dialog>
+
+    <!-- ===== UNDO TOAST ===== -->
+    <div class="undo-toast" id="undoToast" role="status" aria-live="polite">
+      <span>Data cleared.</span>
+      <button id="undoBtn" type="button">↩ Undo</button>
     </div>
 
     <script>
@@ -1037,6 +920,34 @@ tr.status-unknown td:nth-child(-n + 3) {
 </script>
     <script>
 (function () {
+  function levenshtein(a, b) {
+    const matrix = [];
+    for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+    for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+    for (let i = 1; i <= b.length; i++) {
+      for (let j = 1; j <= a.length; j++) {
+        if (b.charAt(i - 1) === a.charAt(j - 1)) {
+          matrix[i][j] = matrix[i - 1][j - 1];
+        } else {
+          matrix[i][j] = Math.min(
+            matrix[i - 1][j - 1] + 1,
+            Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1)
+          );
+        }
+      }
+    }
+    return matrix[b.length][a.length];
+  }
+
+  function getSimilarity(a, b) {
+    const cleanA = String(a || "").trim().toUpperCase();
+    const cleanB = String(b || "").trim().toUpperCase();
+    const distance = levenshtein(cleanA, cleanB);
+    const maxLen = Math.max(cleanA.length, cleanB.length);
+    if (maxLen === 0) return 1.0;
+    return (maxLen - distance) / maxLen;
+  }
+
   function buildKnownMap(items) {
     const map = new Map();
     const unknown = [];
@@ -1092,28 +1003,103 @@ tr.status-unknown td:nth-child(-n + 3) {
     const current = buildKnownMap(currentItems);
     const currentBaseLookup = buildBaseLookup(current.map);
     const previousBaseLookup = buildBaseLookup(previous.map);
-    const editionChangedCurrentCodes = new Set();
+    const matchedCurrentCodes = new Set();
+    const matchedPreviousCodes = new Set();
     const results = [];
 
+    // Pass 1: Exact matches (same code and edition)
     for (const [previousCode, previousItem] of previous.map.entries()) {
       if (current.map.has(previousCode)) {
-        results.push(makeResult("Match", previousCode, previousItem, current.map.get(previousCode), "Exact form and edition match."));
-        continue;
+        const currentItem = current.map.get(previousCode);
+        matchedCurrentCodes.add(previousCode);
+        matchedPreviousCodes.add(previousCode);
+        const sim = getSimilarity(previousItem.description, currentItem.description);
+
+        if (sim === 1.0) {
+          results.push(makeResult("Match", previousCode, previousItem, currentItem, "Exact form, edition and description match."));
+        } else if (sim >= 0.85) {
+          results.push(makeResult("Possible Typo", previousCode, previousItem, currentItem, `Possible description typo (${Math.round(sim * 100)}% similar).`));
+        } else {
+          results.push(makeResult("Description Changed", previousCode, previousItem, currentItem, `Description updated (${Math.round(sim * 100)}% similar).`));
+        }
       }
+    }
+
+    // Pass 2: BaseCode matches (Edition Changed)
+    for (const [previousCode, previousItem] of previous.map.entries()) {
+      if (matchedPreviousCodes.has(previousCode)) continue;
 
       if (currentBaseLookup.has(previousItem.baseCode)) {
         const currentCode = currentBaseLookup.get(previousItem.baseCode);
-        const currentItem = current.map.get(currentCode);
-        editionChangedCurrentCodes.add(currentCode);
-        results.push(makeResult("Edition Changed", currentItem.normalizedCode, previousItem, currentItem, "Same form number with a different edition."));
-        continue;
+        if (!matchedCurrentCodes.has(currentCode)) {
+          const currentItem = current.map.get(currentCode);
+          matchedCurrentCodes.add(currentCode);
+          matchedPreviousCodes.add(previousCode);
+          results.push(makeResult("Edition Changed", currentItem.normalizedCode, previousItem, currentItem, "Same form number with a different edition."));
+        }
       }
-
-      results.push(makeResult("Removed", previousCode, previousItem, null, "Present in Previous only."));
     }
 
+    // Pass 3: Fuzzy description matching for unmatched forms (e.g. CG20110413 vs CG20101219)
+    for (const [previousCode, previousItem] of previous.map.entries()) {
+      if (matchedPreviousCodes.has(previousCode)) continue;
+
+      let bestScore = -1;
+      let bestCurrentCode = null;
+
+      for (const [currentCode, currentItem] of current.map.entries()) {
+        if (matchedCurrentCodes.has(currentCode)) continue;
+
+        const descSim = getSimilarity(previousItem.description, currentItem.description);
+        const codeSim = getSimilarity(previousItem.baseCode, currentItem.baseCode);
+
+        // Strong candidate if description matches exactly, or description is very similar AND code is similar
+        if (descSim === 1.0 || (descSim >= 0.80 && codeSim >= 0.60)) {
+          const score = descSim * 0.7 + codeSim * 0.3;
+          if (score > bestScore) {
+            bestScore = score;
+            bestCurrentCode = currentCode;
+          }
+        }
+      }
+
+      if (bestCurrentCode) {
+        const currentItem = current.map.get(bestCurrentCode);
+        matchedCurrentCodes.add(bestCurrentCode);
+        matchedPreviousCodes.add(previousCode);
+
+        const descSim = getSimilarity(previousItem.description, currentItem.description);
+        const codeDiffers = previousItem.baseCode !== currentItem.baseCode;
+        const editDiffers = previousItem.edition !== currentItem.edition;
+
+        let status = "Edition Changed";
+        let note = "Form code or edition updated.";
+
+        if (codeDiffers && descSim === 1.0) {
+          status = "Edition Changed";
+          note = `Form code updated from ${window.ComparatorParser.displayFormCode(previousItem.normalizedCode)} (descriptions match).`;
+        } else if (descSim >= 0.85) {
+          status = "Possible Typo";
+          note = `Possible form number/description discrepancy (${Math.round(descSim * 100)}% description similarity).`;
+        } else {
+          status = "Description Changed";
+          note = `Form updated (${Math.round(descSim * 100)}% description similarity).`;
+        }
+
+        results.push(makeResult(status, currentItem.normalizedCode, previousItem, currentItem, note));
+      }
+    }
+
+    // Pass 4: Remaining unmatched previous items are Removed
+    for (const [previousCode, previousItem] of previous.map.entries()) {
+      if (!matchedPreviousCodes.has(previousCode)) {
+        results.push(makeResult("Removed", previousCode, previousItem, null, "Present in Previous only."));
+      }
+    }
+
+    // Pass 5: Remaining unmatched current items are Added
     for (const [currentCode, currentItem] of current.map.entries()) {
-      if (!previous.map.has(currentCode) && !editionChangedCurrentCodes.has(currentCode) && !previousBaseLookup.has(currentItem.baseCode)) {
+      if (!matchedCurrentCodes.has(currentCode)) {
         results.push(makeResult("Added", currentCode, null, currentItem, "Present in Current only."));
       }
     }
@@ -1159,9 +1145,11 @@ tr.status-unknown td:nth-child(-n + 3) {
   };
 })();
 
+
 </script>
     <script>
 (function () {
+  /* ── SAMPLES ─────────────────────────────────────────── */
   const samples = {
     previous: [
       "CG20100413 ADDITIONAL INSURED - OWNERS, LESSEES OR CONTRACTORS",
@@ -1186,677 +1174,1224 @@ tr.status-unknown td:nth-child(-n + 3) {
     ].join("\n"),
   };
 
+  /* ── STATE ────────────────────────────────────────────── */
   const state = {
     prefixes: window.ComparatorParser.defaultPrefixes.slice(),
-    previousItems: [],
-    currentItems: [],
-    quoteItems: [],
-    fourthItems: [],
-    results: [],
-    checklistRows: [],
-    collapsedResultGroups: new Set(),
+    previousItems: [], currentItems: [], quoteItems: [], fourthItems: [],
+    results: [], checklistRows: [],
+    collapsedGroups: new Set(),
+    // v2.0
+    filters: { Match: true, Added: true, Removed: true, "Edition Changed": true, "Description Changed": true, "Possible Typo": true, "Unknown Format": true },
+    searchQuery: "",
+    diffsOnly: false,
+    sideBySide: false,
+    pinnedCodes: new Set(),
+    rowNotes: new Map(),       // normalizedCode -> string
+    customEdits: new Map(),    // normalizedCode -> { displayCode?, description? }
+    undoSnapshot: null,
   };
 
-  const draftStorageKey = "formsComparatorDraftV1";
-  let draftSaveTimer = null;
+  const draftKey = "formsComparatorDraftV1";
+  let draftTimer = null;
+  let noteTarget = null;
 
-  const elements = {
-    previousInput: document.getElementById("previousInput"),
-    currentInput: document.getElementById("currentInput"),
-    quoteInput: document.getElementById("quoteInput"),
-    fourthInput: document.getElementById("fourthInput"),
-    previousPreview: document.getElementById("previousPreview"),
-    currentPreview: document.getElementById("currentPreview"),
-    quotePreview: document.getElementById("quotePreview"),
-    fourthPreview: document.getElementById("fourthPreview"),
-    resultsBody: document.getElementById("resultsBody"),
+  /* ── ELEMENT REFS ─────────────────────────────────────── */
+  const el = {
+    previousInput:      document.getElementById("previousInput"),
+    currentInput:       document.getElementById("currentInput"),
+    quoteInput:         document.getElementById("quoteInput"),
+    fourthInput:        document.getElementById("fourthInput"),
+    previousPreview:    document.getElementById("previousPreview"),
+    currentPreview:     document.getElementById("currentPreview"),
+    quotePreview:       document.getElementById("quotePreview"),
+    fourthPreview:      document.getElementById("fourthPreview"),
+    resultsBody:        document.getElementById("resultsBody"),
+    sbsBody:            document.getElementById("sbsBody"),
     excelChecklistBody: document.getElementById("excelChecklistBody"),
-    resultViewSelect: document.getElementById("resultViewSelect"),
-    prefixInput: document.getElementById("prefixInput"),
-    lastCompared: document.getElementById("lastCompared"),
-    comparisonTime: document.getElementById("comparisonTime"),
-    pieChart: document.getElementById("pieChart"),
-    barChart: document.getElementById("barChart"),
-    offlineStatus: document.getElementById("offlineStatus"),
-    themeToggleBtn: document.getElementById("themeToggleBtn"),
-    memoryStatus: document.getElementById("memoryStatus"),
+    resultViewSelect:   document.getElementById("resultViewSelect"),
+    prefixInput:        document.getElementById("prefixInput"),
+    lastCompared:       document.getElementById("lastCompared"),
+    comparisonTime:     document.getElementById("comparisonTime"),
+    pieChart:           document.getElementById("pieChart"),
+    barChart:           document.getElementById("barChart"),
+    offlineStatus:      document.getElementById("offlineStatus"),
+    themeToggleBtn:     document.getElementById("themeToggleBtn"),
+    memoryStatus:       document.getElementById("memoryStatus"),
+    resultsTableWrap:   document.getElementById("resultsTableWrap"),
+    sbsWrap:            document.getElementById("sbsWrap"),
+    resultsSearch:      document.getElementById("resultsSearch"),
+    diffsOnlyBtn:       document.getElementById("diffsOnlyBtn"),
+    sideBySideBtn:      document.getElementById("sideBySideBtn"),
+    undoToast:          document.getElementById("undoToast"),
+    smartExportModal:   document.getElementById("smartExportModal"),
+    noteDialog:         document.getElementById("noteDialog"),
+    noteCodeBadge:      document.getElementById("noteCodeBadge"),
+    noteTextarea:       document.getElementById("noteTextarea"),
+    exportScopeNote:    document.getElementById("exportScopeNote"),
   };
 
   const metricIds = {
-    Previous: "metricPrevious",
-    Current: "metricCurrent",
-    Match: "metricMatch",
-    Added: "metricAdded",
-    Removed: "metricRemoved",
-    "Edition Changed": "metricChanged",
-    "Unknown Format": "metricUnknown",
+    Previous: "metricPrevious", Current: "metricCurrent",
+    Match: "metricMatch", Added: "metricAdded", Removed: "metricRemoved",
+    "Edition Changed": "metricChanged", "Description Changed": "metricDescChanged",
+    "Possible Typo": "metricTypo", "Unknown Format": "metricUnknown",
     Completion: "metricCompletion",
   };
 
+  /* ── UTILS ────────────────────────────────────────────── */
   function statusClass(status) {
     return `status-${status.toLowerCase().replace(/\s+/g, "-")}`;
   }
 
-  function escapeHtml(value) {
-    return String(value || "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
+  function esc(v) {
+    return String(v || "")
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;").replace(/'/g,"&#039;");
   }
 
-  function renderPreview(target, items) {
-    target.innerHTML = items.length
-      ? items.map((item) => `
-          <tr class="${statusClass(item.parseStatus)}">
-            <td>${escapeHtml(item.parseStatus)}</td>
-            <td>${escapeHtml(item.displayCode)}</td>
-            <td>${escapeHtml(item.displayEdition)}</td>
-            <td>${escapeHtml(item.description)}</td>
-          </tr>
-        `).join("")
+  function highlight(text, q) {
+    if (!q) return esc(text);
+    const safe = esc(text);
+    const safeQ = esc(q).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (!safeQ) return safe;
+    return safe.replace(new RegExp(`(${safeQ})`, "gi"), '<make class="hl">$1</make>').replace(/<make/g, "<mark").replace(/\/make>/g, "/mark>");
+  }
+
+  function diffHighlight(prevText, currText, q) {
+    if (!prevText || !currText) {
+      return {
+        prev: highlight(prevText || "", q),
+        curr: highlight(currText || "", q)
+      };
+    }
+
+    const tokensA = prevText.split(/(\s+)/);
+    const tokensB = currText.split(/(\s+)/);
+
+    const wordsA = [];
+    const wordsB = [];
+
+    tokensA.forEach((tok, idx) => {
+      if (/\S/.test(tok)) wordsA.push({ text: tok, idx });
+    });
+    tokensB.forEach((tok, idx) => {
+      if (/\S/.test(tok)) wordsB.push({ text: tok, idx });
+    });
+
+    const dp = Array(wordsA.length + 1).fill(null).map(() => Array(wordsB.length + 1).fill(0));
+    for (let i = 1; i <= wordsA.length; i++) {
+      for (let j = 1; j <= wordsB.length; j++) {
+        if (wordsA[i - 1].text.toUpperCase() === wordsB[j - 1].text.toUpperCase()) {
+          dp[i][j] = dp[i - 1][j - 1] + 1;
+        } else {
+          dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+        }
+      }
+    }
+
+    let i = wordsA.length, j = wordsB.length;
+    const matchA = new Set();
+    const matchB = new Set();
+    while (i > 0 && j > 0) {
+      if (wordsA[i - 1].text.toUpperCase() === wordsB[j - 1].text.toUpperCase()) {
+        matchA.add(wordsA[i - 1].idx);
+        matchB.add(wordsB[j - 1].idx);
+        i--; j--;
+      } else if (dp[i - 1][j] >= dp[i][j - 1]) {
+        i--;
+      } else {
+        j--;
+      }
+    }
+
+    const resA = tokensA.map((tok, idx) => {
+      if (!/\S/.test(tok)) return esc(tok);
+      const isMatched = matchA.has(idx);
+      const formatted = highlight(tok, q);
+      return isMatched ? formatted : `<span class="diff-removed-inline">${formatted}</span>`;
+    }).join("");
+
+    const resB = tokensB.map((tok, idx) => {
+      if (!/\S/.test(tok)) return esc(tok);
+      const isMatched = matchB.has(idx);
+      const formatted = highlight(tok, q);
+      return isMatched ? formatted : `<span class="diff-added-inline">${formatted}</span>`;
+    }).join("");
+
+    return { prev: resA, curr: resB };
+  }
+
+  function flashBtn(id, done, orig) {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.textContent = done;
+    window.setTimeout(() => { btn.textContent = orig; }, 1600);
+  }
+
+  /* ── FILTER LOGIC ─────────────────────────────────────── */
+  function baseRows() {
+    const src = el.resultViewSelect.value;
+    return src === "all" ? state.results : state.results.filter(r => (r.source || "Current Policy") === src);
+  }
+
+  function getFiltered() {
+    let rows = baseRows();
+    if (state.diffsOnly) rows = rows.filter(r => r.status !== "Match");
+    rows = rows.filter(r => state.filters[r.status] !== false);
+    if (state.searchQuery) {
+      const q = state.searchQuery.toLowerCase();
+      rows = rows.filter(r =>
+        (r.normalizedCode || "").toLowerCase().includes(q) ||
+        (r.displayCode || "").toLowerCase().includes(q) ||
+        (r.description || "").toLowerCase().includes(q) ||
+        (r.originalPrevious || "").toLowerCase().includes(q) ||
+        (r.originalCurrent || "").toLowerCase().includes(q) ||
+        (r.status || "").toLowerCase().includes(q) ||
+        (state.rowNotes.get(r.normalizedCode) || "").toLowerCase().includes(q)
+      );
+    }
+    const pinned = rows.filter(r => state.pinnedCodes.has(r.normalizedCode));
+    const rest   = rows.filter(r => !state.pinnedCodes.has(r.normalizedCode));
+    return [...pinned, ...rest];
+  }
+
+  function updateFilterCounts() {
+    const rows = baseRows();
+    const c = { Match: 0, Added: 0, Removed: 0, "Edition Changed": 0, "Description Changed": 0, "Possible Typo": 0, "Unknown Format": 0 };
+    rows.forEach(r => { if (c[r.status] !== undefined) c[r.status]++; });
+    document.getElementById("cntMatch").textContent   = `(${c.Match})`;
+    document.getElementById("cntAdded").textContent   = `(${c.Added})`;
+    document.getElementById("cntRemoved").textContent = `(${c.Removed})`;
+    document.getElementById("cntChanged").textContent = `(${c["Edition Changed"]})`;
+    document.getElementById("cntDescChanged").textContent = `(${c["Description Changed"]})`;
+    document.getElementById("cntTypo").textContent   = `(${c["Possible Typo"]})`;
+    document.getElementById("cntUnknown").textContent = `(${c["Unknown Format"]})`;
+    updateScopeNote();
+  }
+
+  function updateScopeNote() {
+    const src = el.resultViewSelect.value;
+    const label = src === "all" ? "All documents" : displaySrcName(src);
+    const visible = getFiltered().length;
+    const total = baseRows().length;
+    el.exportScopeNote.textContent = `View: ${label} — ${visible} of ${total} rows visible.`;
+  }
+
+  /* ── RENDER PREVIEW ───────────────────────────────────── */
+  function renderPreview(tbody, items) {
+    tbody.innerHTML = items.length
+      ? items.map(i => `<tr class="${statusClass(i.parseStatus)}"><td>${esc(i.parseStatus)}</td><td>${esc(i.displayCode)}</td><td>${esc(i.displayEdition)}</td><td>${esc(i.description)}</td></tr>`).join("")
       : `<tr><td colspan="4">No parsed rows yet.</td></tr>`;
   }
 
+  /* ── RENDER RESULTS ───────────────────────────────────── */
   function renderResults() {
-    const rows = selectedResults();
+    if (state.sideBySide) { renderSBS(); return; }
+    el.resultsTableWrap.classList.remove("hidden");
+    el.sbsWrap.classList.add("hidden");
+
+    const rows = getFiltered();
+    updateFilterCounts();
+
     if (!rows.length) {
-      elements.resultsBody.innerHTML = `<tr><td colspan="8">Run a comparison to see results for the selected document.</td></tr>`;
-      updateExportScopeNote();
+      el.resultsBody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px;">No results match the current filters. Adjust filters or run a comparison.</td></tr>`;
       return;
     }
 
-    if (selectedSource() === "all") {
-      const groups = groupRowsBySource(rows);
-      elements.resultsBody.innerHTML = groups.map(({ source, rows: groupRows }) => {
-        const collapsed = state.collapsedResultGroups.has(source);
-        const counts = summarize(groupRows);
-        const meta = `${groupRows.length} rows | ${counts.Match || 0} match | ${counts.Added || 0} added | ${counts.Removed || 0} removed | ${counts["Edition Changed"] || 0} revised | ${counts["Unknown Format"] || 0} unknown`;
-        return `
-          <tr class="result-group-row">
-            <td colspan="8">
-              <button class="result-group-button" type="button" data-result-group="${escapeHtml(source)}">
-                ${collapsed ? "Expand" : "Minimize"} ${escapeHtml(displaySourceName(source))}
-              </button>
-              <span class="result-group-meta">${escapeHtml(meta)}</span>
-            </td>
-          </tr>
-          ${collapsed ? "" : groupRows.map(resultRowHtml).join("")}
-        `;
+    const src = el.resultViewSelect.value;
+    if (src === "all") {
+      const groups = groupBySource(rows);
+      el.resultsBody.innerHTML = groups.map(({ source, rows: gr }) => {
+        const collapsed = state.collapsedGroups.has(source);
+        const cnt = summarize(gr);
+        const meta = `${gr.length} rows | ${cnt.Match||0} match | ${cnt.Added||0} added | ${cnt.Removed||0} removed | ${cnt["Edition Changed"]||0} revised | ${cnt["Unknown Format"]||0} unknown`;
+        return `<tr class="result-group-row"><td colspan="9">
+            <button class="result-group-button" type="button" data-group="${esc(source)}">${collapsed ? "▶" : "▼"} ${esc(displaySrcName(source))}</button>
+            <span class="result-group-meta">${esc(meta)}</span>
+          </td></tr>
+          ${collapsed ? "" : gr.map(resultRowHtml).join("")}`;
       }).join("");
-      updateExportScopeNote();
       return;
     }
-
-    elements.resultsBody.innerHTML = rows.map(resultRowHtml).join("");
-    updateExportScopeNote();
+    el.resultsBody.innerHTML = rows.map(resultRowHtml).join("");
   }
 
   function resultRowHtml(item) {
-    return `
-          <tr class="${statusClass(item.status)}">
-            <td>${escapeHtml(item.status)}</td>
-            <td>${escapeHtml(item.source || "Current Policy")}</td>
-            <td>${escapeHtml(item.displayCode || item.normalizedCode)}</td>
-            <td>${escapeHtml(item.originalPrevious)}</td>
-            <td>${escapeHtml(item.originalCurrent)}</td>
-            <td>${escapeHtml(item.description)}</td>
-            <td>${escapeHtml(item.edition)}</td>
-            <td>${escapeHtml(item.notes)}</td>
-          </tr>
-        `;
+    const code    = item.normalizedCode || "";
+    const pinned  = state.pinnedCodes.has(code);
+    const hasNote = state.rowNotes.has(code) && state.rowNotes.get(code).trim();
+    const edit    = state.customEdits.get(code) || {};
+    const dispCode = edit.displayCode !== undefined ? edit.displayCode : (item.displayCode || item.normalizedCode);
+    const desc     = edit.description !== undefined ? edit.description : item.description;
+    const q = state.searchQuery;
+    const diffs = diffHighlight(item.originalPrevious, item.originalCurrent, q);
+    return `<tr class="${statusClass(item.status)}${pinned ? " row-pinned" : ""}" data-code="${esc(code)}">
+      <td>${esc(item.status)}</td>
+      <td>${esc(item.source || "Current Policy")}</td>
+      <td><span contenteditable="true" data-field="displayCode" data-code="${esc(code)}">${highlight(dispCode, q)}</span></td>
+      <td>${diffs.prev}</td>
+      <td>${diffs.curr}</td>
+      <td><span contenteditable="true" data-field="description" data-code="${esc(code)}">${highlight(desc, q)}</span></td>
+      <td>${esc(item.edition)}</td>
+      <td>${esc(item.notes)}</td>
+      <td class="row-actions-td">
+        <button class="pin-btn${pinned ? " on" : ""}" type="button" data-pin="${esc(code)}" title="${pinned ? "Unpin" : "Pin to top"}">${pinned ? "⭐" : "☆"}</button>
+        <button class="note-btn${hasNote ? " on" : ""}" type="button" data-note="${esc(code)}" title="${hasNote ? "Edit note" : "Add note"}">${hasNote ? "📝" : "🖊"}</button>
+      </td>
+    </tr>`;
   }
 
-  function groupRowsBySource(rows) {
-    const sourceOrder = ["Current Policy", "Quote / 3rd Document", "4th Document"];
-    return sourceOrder
-      .map((source) => ({ source, rows: rows.filter((row) => (row.source || "Current Policy") === source) }))
-      .filter((group) => group.rows.length);
+  /* ── SIDE-BY-SIDE ─────────────────────────────────────── */
+  function renderSBS() {
+    el.resultsTableWrap.classList.add("hidden");
+    el.sbsWrap.classList.remove("hidden");
+    const rows = getFiltered();
+    updateFilterCounts();
+    if (!rows.length) {
+      el.sbsBody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px;">No results. Run a comparison first.</td></tr>`;
+      return;
+    }
+    el.sbsBody.innerHTML = rows.map(item => {
+      const code = item.normalizedCode || "";
+      const pinned = state.pinnedCodes.has(code);
+      const hasNote = state.rowNotes.has(code) && state.rowNotes.get(code).trim();
+      let prev = "", curr = "";
+      switch (item.status) {
+        case "Match":
+          prev = esc(item.originalPrevious || item.displayCode);
+          curr = esc(item.originalCurrent  || item.displayCode);
+          break;
+        case "Removed":
+          prev = `<span class="sbs-removed">${esc(item.originalPrevious || item.displayCode)}</span>`;
+          curr = `<span class="sbs-empty">— not present —</span>`;
+          break;
+        case "Added":
+          prev = `<span class="sbs-empty">— not present —</span>`;
+          curr = `<span class="sbs-added">${esc(item.originalCurrent || item.displayCode)}</span>`;
+          break;
+        case "Edition Changed":
+        case "Description Changed":
+        case "Possible Typo":
+          const sbsDiff = diffHighlight(item.originalPrevious, item.originalCurrent, "");
+          prev = `<span class="sbs-changed">${sbsDiff.prev}</span>`;
+          curr = `<span class="sbs-changed">${sbsDiff.curr}</span>`;
+          break;
+        default:
+          prev = esc(item.originalPrevious || item.displayCode);
+          curr = esc(item.originalCurrent  || item.displayCode);
+      }
+      return `<tr class="${statusClass(item.status)}${pinned ? " row-pinned" : ""}" data-code="${esc(code)}">
+        <td>${esc(item.status)}</td>
+        <td>${prev}</td>
+        <td>${curr}</td>
+        <td class="row-actions-td">
+          <button class="pin-btn${pinned ? " on" : ""}" type="button" data-pin="${esc(code)}">${pinned ? "⭐" : "☆"}</button>
+          <button class="note-btn${hasNote ? " on" : ""}" type="button" data-note="${esc(code)}">${hasNote ? "📝" : "🖊"}</button>
+        </td>
+      </tr>`;
+    }).join("");
   }
 
-  function displaySourceName(source) {
-    if (source === "Quote / 3rd Document") return "3rd Document";
-    return source;
+  /* ── GROUP HELPERS ────────────────────────────────────── */
+  function groupBySource(rows) {
+    const order = ["Current Policy", "Quote / 3rd Document", "4th Document"];
+    return order
+      .map(src => ({ source: src, rows: rows.filter(r => (r.source || "Current Policy") === src) }))
+      .filter(g => g.rows.length);
   }
 
-  function updateExportScopeNote() {
-    const note = document.getElementById("exportScopeNote");
-    if (!note) return;
-    const source = selectedSource();
-    const label = source === "all" ? "All compared documents" : displaySourceName(source);
-    note.textContent = `Exports use the selected Display / Export view: ${label}.`;
+  function displaySrcName(src) {
+    return src === "Quote / 3rd Document" ? "3rd Document" : src;
   }
 
-  function selectedSource() {
-    return elements.resultViewSelect ? elements.resultViewSelect.value : "all";
-  }
-
-  function selectedResults() {
-    const source = selectedSource();
-    return source === "all" ? state.results : state.results.filter((row) => (row.source || "Current Policy") === source);
-  }
-
-  function selectedChecklistRows() {
-    const source = selectedSource();
-    return source === "all" ? state.checklistRows : state.checklistRows.filter((row) => row.source === source);
-  }
-
-  function checklistStatus(status) {
-    return status === "Edition Changed" ? "Revised" : status;
-  }
+  /* ── CHECKLIST ────────────────────────────────────────── */
+  function checklistStatus(s) { return s === "Edition Changed" ? "Revised" : s; }
 
   function formDescription(row) {
-    const code = (row.displayCode || row.normalizedCode || "").replace(/\s*\(\d{2}\/\d{2}\)\s*$/, "");
-    return [code, row.description].filter(Boolean).join(" ") || code || row.normalizedCode || "";
+    const edit = state.customEdits.get(row.normalizedCode) || {};
+    // When toggled to "previous", use originalPrevious if available
+    let rawCode;
+    if (typeof checklistView !== "undefined" && checklistView === "previous" && row.originalPrevious) {
+      rawCode = row.originalPrevious;
+    } else {
+      rawCode = edit.displayCode !== undefined ? edit.displayCode : (row.displayCode || row.normalizedCode || "");
+    }
+    const code = rawCode.replace(/\s*\(\d{2}\/\d{2}\)\s*$/, "");
+    const desc = edit.description !== undefined ? edit.description : row.description;
+    return [code, desc].filter(Boolean).join(" ") || row.normalizedCode || "";
+  }
+
+  function checklistEdition(v) {
+    let e = String(v || "").trim();
+    if (e.includes("->")) e = e.split("->").pop().trim();
+    if (!e) return "";
+    return e.startsWith("(") ? e : `(${e})`;
   }
 
   function makeChecklistRows(results) {
     return results
-      .filter((row) => row.status !== "Unknown Format")
-      .map((row) => ({
-        formDescription: formDescription(row),
-        edition: checklistEdition(row.edition),
-        status: checklistStatus(row.status),
-        source: row.source || "Current Policy",
+      .filter(r => r.status !== "Unknown Format")
+      .map(r => ({
+        formDescription: formDescription(r),
+        edition: checklistEdition(r.edition),
+        status: checklistStatus(r.status),
+        source: r.source || "Current Policy",
+        normalizedCode: r.normalizedCode,
       }));
   }
 
-  function checklistEdition(value) {
-    let edition = String(value || "").trim();
-    if (edition.includes("->")) edition = edition.split("->").pop().trim();
-    if (!edition) return "";
-    return edition.startsWith("(") ? edition : `(${edition})`;
-  }
-
   function renderChecklist() {
-    const rows = selectedChecklistRows();
-    elements.excelChecklistBody.innerHTML = rows.length
-      ? rows.map((row) => `
-          <tr class="${statusClass(row.status)}">
-            <td>${escapeHtml(row.formDescription)}</td>
-            <td>${escapeHtml(row.edition)}</td>
-            <td>${escapeHtml(row.status)}</td>
-            <td>${escapeHtml(row.source)}</td>
-          </tr>
-        `).join("")
-      : `<tr><td colspan="4">Run a comparison to generate Excel-ready rows for the selected document.</td></tr>`;
+    const src = el.resultViewSelect.value;
+    const rows = src === "all" ? state.checklistRows : state.checklistRows.filter(r => r.source === src);
+    el.excelChecklistBody.innerHTML = rows.length
+      ? rows.map(r => {
+          const cv = v => esc(v || "");
+          return `<tr class="${statusClass(r.status)}">
+            <td class="cell-copy" data-copy-val="${cv(r.formDescription)}">${cv(r.formDescription)}</td>
+            <td class="cell-copy" data-copy-val="${cv(r.edition)}">${cv(r.edition)}</td>
+            <td class="cell-copy" data-copy-val="${cv(r.status)}">${cv(r.status)}</td>
+            <td class="cell-copy" data-copy-val="${cv(r.source)}">${cv(r.source)}</td>
+          </tr>`;
+        }).join("")
+      : `<tr><td colspan="4">Run a comparison to generate Excel-ready rows.</td></tr>`;
   }
 
+  /* ── METRICS ──────────────────────────────────────────── */
   function summarize(results) {
-    return results.reduce((acc, item) => {
-      acc[item.status] = (acc[item.status] || 0) + 1;
-      return acc;
-    }, {});
+    return results.reduce((acc, r) => { acc[r.status] = (acc[r.status] || 0) + 1; return acc; }, {});
   }
 
-  function updateMetrics(summary, comparisonMeta) {
+  function updateMetrics(summary, meta) {
     const total = Math.max(1, state.results.length);
-    const known = (summary.Match || 0) + (summary.Added || 0) + (summary.Removed || 0) + (summary["Edition Changed"] || 0);
+    const known = (summary.Match||0) + (summary.Added||0) + (summary.Removed||0) + (summary["Edition Changed"]||0) + (summary["Description Changed"]||0) + (summary["Possible Typo"]||0);
     const completion = Math.round((known / total) * 100);
-    const values = {
-      Previous: comparisonMeta ? comparisonMeta.previousCount : state.previousItems.length,
-      Current: comparisonMeta ? comparisonMeta.currentCount : state.currentItems.length,
+    const vals = {
+      Previous: meta ? meta.previousCount : state.previousItems.length,
+      Current: meta ? meta.currentCount : state.currentItems.length,
       Match: summary.Match || 0,
       Added: summary.Added || 0,
       Removed: summary.Removed || 0,
       "Edition Changed": summary["Edition Changed"] || 0,
+      "Description Changed": summary["Description Changed"] || 0,
+      "Possible Typo": summary["Possible Typo"] || 0,
       "Unknown Format": summary["Unknown Format"] || 0,
       Completion: `${state.results.length ? completion : 0}%`,
     };
-
     for (const [key, id] of Object.entries(metricIds)) {
-      document.getElementById(id).textContent = values[key];
+      document.getElementById(id).textContent = vals[key];
     }
   }
 
+  /* ── PARSE HELPERS ────────────────────────────────────── */
   function cleanPrevious() {
-    state.prefixes = window.ComparatorParser.parsePrefixes(elements.prefixInput.value);
-    state.previousItems = window.ComparatorParser.parseSchedule(elements.previousInput.value, state.prefixes);
-    renderPreview(elements.previousPreview, state.previousItems);
+    state.prefixes = window.ComparatorParser.parsePrefixes(el.prefixInput.value);
+    state.previousItems = window.ComparatorParser.parseSchedule(el.previousInput.value, state.prefixes);
+    renderPreview(el.previousPreview, state.previousItems);
     updateMetrics(summarize(state.results), null);
   }
-
   function cleanCurrent() {
-    state.prefixes = window.ComparatorParser.parsePrefixes(elements.prefixInput.value);
-    state.currentItems = window.ComparatorParser.parseSchedule(elements.currentInput.value, state.prefixes);
-    renderPreview(elements.currentPreview, state.currentItems);
+    state.prefixes = window.ComparatorParser.parsePrefixes(el.prefixInput.value);
+    state.currentItems = window.ComparatorParser.parseSchedule(el.currentInput.value, state.prefixes);
+    renderPreview(el.currentPreview, state.currentItems);
     updateMetrics(summarize(state.results), null);
   }
-
   function cleanQuote() {
-    state.prefixes = window.ComparatorParser.parsePrefixes(elements.prefixInput.value);
-    state.quoteItems = window.ComparatorParser.parseSchedule(elements.quoteInput.value, state.prefixes);
-    renderPreview(elements.quotePreview, state.quoteItems);
+    state.prefixes = window.ComparatorParser.parsePrefixes(el.prefixInput.value);
+    state.quoteItems = window.ComparatorParser.parseSchedule(el.quoteInput.value, state.prefixes);
+    renderPreview(el.quotePreview, state.quoteItems);
   }
-
   function cleanFourth() {
-    state.prefixes = window.ComparatorParser.parsePrefixes(elements.prefixInput.value);
-    state.fourthItems = window.ComparatorParser.parseSchedule(elements.fourthInput.value, state.prefixes);
-    renderPreview(elements.fourthPreview, state.fourthItems);
+    state.prefixes = window.ComparatorParser.parsePrefixes(el.prefixInput.value);
+    state.fourthItems = window.ComparatorParser.parseSchedule(el.fourthInput.value, state.prefixes);
+    renderPreview(el.fourthPreview, state.fourthItems);
   }
 
-  function compareAgainstPrevious(label, items) {
-    const comparison = window.ComparatorEngine.compareSchedules(state.previousItems, items);
-    comparison.results.forEach((row) => {
-      row.source = label;
-      if (label !== "Current Policy") row.notes = `${label}: ${row.notes}`;
+  /* ── COMPARE ──────────────────────────────────────────── */
+  function compareAgainst(label, items) {
+    const cmp = window.ComparatorEngine.compareSchedules(state.previousItems, items);
+    cmp.results.forEach(r => {
+      r.source = label;
+      if (label !== "Current Policy") r.notes = `${label}: ${r.notes}`;
     });
-    return comparison;
+    return cmp;
   }
 
   function compare() {
-    const started = performance.now();
-    cleanPrevious();
-    cleanCurrent();
+    const t0 = performance.now();
+    cleanPrevious(); cleanCurrent();
     if (!document.getElementById("quotePane").classList.contains("hidden")) cleanQuote();
     if (!document.getElementById("fourthPane").classList.contains("hidden")) cleanFourth();
 
-    const comparisons = [compareAgainstPrevious("Current Policy", state.currentItems)];
-    if (state.quoteItems.length) comparisons.push(compareAgainstPrevious("Quote / 3rd Document", state.quoteItems));
-    if (state.fourthItems.length) comparisons.push(compareAgainstPrevious("4th Document", state.fourthItems));
+    const cmps = [compareAgainst("Current Policy", state.currentItems)];
+    if (state.quoteItems.length)  cmps.push(compareAgainst("Quote / 3rd Document", state.quoteItems));
+    if (state.fourthItems.length) cmps.push(compareAgainst("4th Document", state.fourthItems));
 
-    const comparison = comparisons[0];
-    state.results = comparisons.flatMap((item) => item.results);
+    state.results = cmps.flatMap(c => c.results);
     state.checklistRows = makeChecklistRows(state.results);
     const summary = summarize(state.results);
     renderResults();
     renderChecklist();
-    updateMetrics(summary, comparison);
+    updateMetrics(summary, cmps[0]);
+    updateFilterCounts();
     drawCharts(summary);
-    const seconds = ((performance.now() - started) / 1000).toFixed(2);
-    elements.comparisonTime.textContent = `${seconds} sec`;
-    elements.lastCompared.textContent = new Date().toLocaleString();
+    el.comparisonTime.textContent = `${((performance.now() - t0) / 1000).toFixed(2)} sec`;
+    el.lastCompared.textContent = new Date().toLocaleString();
     saveDraft();
   }
 
   function drawCharts(summary) {
     const data = [
-      ["Match", summary.Match || 0, "#15803d"],
-      ["Added", summary.Added || 0, "#a16207"],
-      ["Removed", summary.Removed || 0, "#b91c1c"],
-      ["Edition Changed", summary["Edition Changed"] || 0, "#c2410c"],
-      ["Unknown", summary["Unknown Format"] || 0, "#64748b"],
+      ["Match",               summary.Match || 0,                    "#15803d"],
+      ["Added",               summary.Added || 0,                    "#ca8a04"],
+      ["Removed",             summary.Removed || 0,                  "#dc2626"],
+      ["Edition Changed",     summary["Edition Changed"] || 0,       "#ea580c"],
+      ["Desc Changed",        summary["Description Changed"] || 0,   "#8b5cf6"],
+      ["Possible Typo",       summary["Possible Typo"] || 0,         "#d946ef"],
+      ["Unknown",             summary["Unknown Format"] || 0,        "#64748b"],
     ];
-    drawPie(elements.pieChart, data);
-    drawBars(elements.barChart, data);
+    drawPie(el.pieChart, data);
+    drawBars(el.barChart, data);
   }
 
   function drawPie(canvas, data) {
     const ctx = canvas.getContext("2d");
-    const width = canvas.width;
-    const height = canvas.height;
-    ctx.clearRect(0, 0, width, height);
-    const total = data.reduce((sum, item) => sum + item[1], 0);
-    const cx = 108;
-    const cy = 112;
-    const radius = 78;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const total = data.reduce((s, d) => s + d[1], 0);
+    const cx = 98, cy = 112, r = 74;
     let angle = -Math.PI / 2;
-
     if (!total) {
       ctx.fillStyle = "#e5e7eb";
-      ctx.beginPath();
-      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
     } else {
-      for (const [, value, color] of data) {
-        const slice = (value / total) * Math.PI * 2;
-        ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.arc(cx, cy, radius, angle, angle + slice);
-        ctx.closePath();
-        ctx.fillStyle = color;
-        ctx.fill();
-        angle += slice;
+      for (const [, v, col] of data) {
+        const slice = (v / total) * Math.PI * 2;
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, angle, angle + slice); ctx.closePath();
+        ctx.fillStyle = col; ctx.fill(); angle += slice;
       }
     }
-
-    data.forEach((item, index) => {
-      const y = 54 + index * 28;
-      ctx.fillStyle = item[2];
-      ctx.fillRect(220, y - 10, 14, 14);
-      ctx.fillStyle = "#172033";
-      ctx.font = "13px Segoe UI, Arial";
-      ctx.fillText(`${item[0]}: ${item[1]}`, 244, y + 1);
+    const isDark = document.documentElement.dataset.theme === "dark";
+    data.forEach((d, i) => {
+      const y = 32 + i * 26;
+      ctx.fillStyle = d[2]; ctx.fillRect(200, y - 10, 12, 12);
+      ctx.fillStyle = isDark ? "#e5eefb" : "#172033";
+      ctx.font = "12px Segoe UI, Arial";
+      ctx.fillText(`${d[0]}: ${d[1]}`, 220, y + 1);
     });
   }
 
   function drawBars(canvas, data) {
     const ctx = canvas.getContext("2d");
-    const width = canvas.width;
-    const height = canvas.height;
-    ctx.clearRect(0, 0, width, height);
-    const max = Math.max(1, ...data.map((item) => item[1]));
-    const left = 132;
-    const top = 28;
-    const rowHeight = 34;
-    const barMax = width - left - 64;
-
-    ctx.font = "13px Segoe UI, Arial";
-    data.forEach((item, index) => {
-      const y = top + index * rowHeight;
-      const barWidth = (item[1] / max) * barMax;
-      ctx.fillStyle = "#334155";
-      ctx.fillText(item[0], 12, y + 18);
-      ctx.fillStyle = "#e2e8f0";
-      ctx.fillRect(left, y, barMax, 18);
-      ctx.fillStyle = item[2];
-      ctx.fillRect(left, y, barWidth, 18);
-      ctx.fillStyle = "#172033";
-      ctx.fillText(String(item[1]), left + barMax + 14, y + 15);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const max = Math.max(1, ...data.map(d => d[1]));
+    const left = 132, top = 16, rh = 28, barMax = canvas.width - left - 64;
+    const isDark = document.documentElement.dataset.theme === "dark";
+    ctx.font = "12px Segoe UI, Arial";
+    data.forEach((d, i) => {
+      const y = top + i * rh;
+      ctx.fillStyle = isDark ? "#a8b3c7" : "#334155"; ctx.fillText(d[0], 12, y + 14);
+      ctx.fillStyle = isDark ? "#273142" : "#e2e8f0"; ctx.fillRect(left, y, barMax, 14);
+      ctx.fillStyle = d[2]; ctx.fillRect(left, y, (d[1] / max) * barMax, 14);
+      ctx.fillStyle = isDark ? "#e5eefb" : "#172033"; ctx.fillText(String(d[1]), left + barMax + 14, y + 12);
     });
   }
 
-  function toCsv(rows) {
-    const headers = ["Source", "Status", "Normalized Code", "Original Previous", "Original Current", "Description", "Edition", "Notes"];
-    const body = rows.map((row) => [
-      row.source || "Current Policy",
-      row.status,
-      row.displayCode || row.normalizedCode,
-      row.originalPrevious,
-      row.originalCurrent,
-      row.description,
-      row.edition,
-      row.notes,
-    ]);
-    return [headers, ...body]
-      .map((line) => line.map((cell) => `"${String(cell || "").replace(/"/g, '""')}"`).join(","))
-      .join("\n");
-  }
-
-  function checklistTsv() {
-    const headers = ["Form / Description", "Edition", "Status", "Compared Document"];
-    const body = selectedChecklistRows().map((row) => [row.formDescription, row.edition, row.status, row.source]);
-    return [headers, ...body]
-      .map((line) => line.map((cell) => String(cell || "").replace(/\t/g, " ").replace(/\r?\n/g, " ")).join("\t"))
-      .join("\n");
-  }
-
-  function excelHtml() {
-    const resultRows = selectedResults();
-    const checklistRows = selectedChecklistRows();
-    const label = selectedSource() === "all" ? "All compared documents" : displaySourceName(selectedSource());
-    const table = (headers, rows) => `
-      <table border="1">
-        <thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead>
-        <tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("")}</tbody>
-      </table>`;
-    const resultTable = table(
-      ["Source", "Status", "Code", "Original Previous", "Original Compared", "Description", "Edition", "Notes"],
-      resultRows.map((row) => [
-        row.source || "Current Policy",
-        row.status,
-        row.displayCode || row.normalizedCode,
-        row.originalPrevious,
-        row.originalCurrent,
-        row.description,
-        row.edition,
-        row.notes,
-      ])
-    );
-    const checklistTable = table(
-      ["Form / Description", "Edition", "Status", "Compared Document"],
-      checklistRows.map((row) => [row.formDescription, row.edition, row.status, row.source])
-    );
-    return `<!doctype html><html><head><meta charset="utf-8"></head><body><h1>Comparison Results - ${escapeHtml(label)}</h1>${resultTable}<h1>Excel Paste Checklist - ${escapeHtml(label)}</h1>${checklistTable}</body></html>`;
-  }
-
-  async function copyChecklist() {
-    const text = checklistTsv();
+  /* ── CLIPBOARD / DOWNLOAD ─────────────────────────────── */
+  async function copyText(text) {
     if (navigator.clipboard && window.isSecureContext) {
       await navigator.clipboard.writeText(text);
     } else {
-      const helper = document.createElement("textarea");
-      helper.value = text;
-      document.body.appendChild(helper);
-      helper.select();
-      document.execCommand("copy");
-      helper.remove();
+      const ta = document.createElement("textarea");
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      document.execCommand("copy"); ta.remove();
     }
-    document.getElementById("copyExcelBtn").textContent = "Copied";
+  }
+
+  function downloadFile(name, content, mime) {
+    const url = URL.createObjectURL(new Blob([content], { type: mime }));
+    const a = document.createElement("a"); a.href = url; a.download = name;
+    a.click(); URL.revokeObjectURL(url);
+  }
+
+  async function copyFormNumbers() {
+    const text = getFiltered().map(r => r.displayCode || r.normalizedCode).filter(Boolean).join("\n");
+    await copyText(text);
+    flashBtn("copyFormNumbersBtn", "✓ Copied!", "📋 Copy Numbers");
+  }
+
+  async function copyDescriptions() {
+    const text = getFiltered().map(r => {
+      const code = r.displayCode || r.normalizedCode;
+      return [code, r.description].filter(Boolean).join(" — ");
+    }).filter(Boolean).join("\n");
+    await copyText(text);
+    flashBtn("copyDescriptionsBtn", "✓ Copied!", "📋 Descriptions");
+  }
+
+  async function copyEntireTable() {
+    const rows = getFiltered();
+    const hdrs = ["Status","Code","Original Previous","Original Current","Description","Edition","Source"];
+    const body = rows.map(r => [r.status, r.displayCode||r.normalizedCode, r.originalPrevious, r.originalCurrent, r.description, r.edition, r.source||"Current Policy"]);
+    const tsv = [hdrs,...body].map(row => row.map(c => String(c||"").replace(/\t/g," ").replace(/\n/g," ")).join("\t")).join("\n");
+    await copyText(tsv);
+    flashBtn("copyTableBtn", "✓ Copied!", "📋 Copy Table");
+  }
+
+  async function copyChecklist() {
+    const src = el.resultViewSelect.value;
+    const rows = src === "all" ? state.checklistRows : state.checklistRows.filter(r => r.source === src);
+    const hdrs = ["Form / Description","Edition","Status","Compared Document"];
+    const body = rows.map(r => [r.formDescription, r.edition, r.status, r.source]);
+    const tsv = [hdrs,...body].map(row => row.map(c => String(c||"").replace(/\t/g," ").replace(/\n/g," ")).join("\t")).join("\n");
+    await copyText(tsv);
+    flashBtn("copyExcelBtn","Copied!","Copy for Excel");
+  }
+
+  function flashHeader(el, done, orig) {
+    el.textContent = done;
+    el.classList.add("header-copied");
     window.setTimeout(() => {
-      document.getElementById("copyExcelBtn").textContent = "Copy for Excel";
-    }, 1400);
+      el.textContent = orig;
+      el.classList.remove("header-copied");
+    }, 1200);
   }
 
-  function downloadFile(fileName, content, mimeType) {
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = fileName;
-    link.click();
-    URL.revokeObjectURL(url);
+  async function copyColumnCode() {
+    const rows = getFiltered();
+    const codes = rows.map(r => {
+      const edit = state.customEdits.get(r.normalizedCode) || {};
+      return edit.displayCode !== undefined ? edit.displayCode : (r.displayCode || r.normalizedCode);
+    }).filter(Boolean);
+    if (!codes.length) return;
+    await copyText(codes.join("\n"));
+    flashHeader(document.getElementById("hdrCopyCode"), "Copied! ✔", "Code 📋");
   }
 
+  async function copyColumnDesc() {
+    const rows = getFiltered();
+    const descs = rows.map(r => {
+      const edit = state.customEdits.get(r.normalizedCode) || {};
+      return edit.description !== undefined ? edit.description : r.description;
+    }).filter(Boolean);
+    if (!descs.length) return;
+    await copyText(descs.join("\n"));
+    flashHeader(document.getElementById("hdrCopyDesc"), "Copied! ✔", "Description 📋");
+  }
+
+  async function copyColumnEdit() {
+    const rows = getFiltered();
+    const editions = rows.map(r => r.edition).filter(Boolean);
+    if (!editions.length) return;
+    await copyText(editions.join("\n"));
+    flashHeader(document.getElementById("hdrCopyEdit"), "Copied! ✔", "Edition 📋");
+  }
+
+  /* ── SBS COLUMN COPY ──────────────────────────────────── */
+  async function copySbsPrev() {
+    const rows = getFiltered();
+    const vals = rows.map(r => r.status === "Added" ? "" : (r.originalPrevious || r.displayCode || r.normalizedCode || "")).filter(Boolean);
+    if (!vals.length) return;
+    await copyText(vals.join("\n"));
+    flashHeader(document.getElementById("hdrSbsPrev"), "Copied! \u2714", "Previous Form \ud83d\udccb");
+  }
+
+  async function copySbsCurr() {
+    const rows = getFiltered();
+    const vals = rows.map(r => r.status === "Removed" ? "" : (r.originalCurrent || r.displayCode || r.normalizedCode || "")).filter(Boolean);
+    if (!vals.length) return;
+    await copyText(vals.join("\n"));
+    flashHeader(document.getElementById("hdrSbsCurr"), "Copied! \u2714", "Current Form \ud83d\udccb");
+  }
+
+  /* ── CHECKLIST TOGGLE STATE ───────────────────────────── */
+  let checklistView = "current";
+
+  function getChecklistRows() {
+    const src = el.resultViewSelect.value;
+    return src === "all" ? state.checklistRows : state.checklistRows.filter(r => r.source === src);
+  }
+
+  /* ── CHECKLIST COLUMN COPY ────────────────────────────── */
+  async function copyClForm() {
+    const vals = getChecklistRows().map(r => r.formDescription).filter(Boolean);
+    if (!vals.length) return;
+    await copyText(vals.join("\n"));
+    flashHeader(document.getElementById("hdrClForm"), "Copied! \u2714", "Form / Description \ud83d\udccb");
+  }
+
+  async function copyClEdition() {
+    const vals = getChecklistRows().map(r => r.edition).filter(Boolean);
+    if (!vals.length) return;
+    await copyText(vals.join("\n"));
+    flashHeader(document.getElementById("hdrClEdition"), "Copied! \u2714", "Edition \ud83d\udccb");
+  }
+
+  async function copyClStatus() {
+    const vals = getChecklistRows().map(r => r.status).filter(Boolean);
+    if (!vals.length) return;
+    await copyText(vals.join("\n"));
+    flashHeader(document.getElementById("hdrClStatus"), "Copied! \u2714", "Status \ud83d\udccb");
+  }
+
+  async function copyClSource() {
+    const vals = getChecklistRows().map(r => r.source).filter(Boolean);
+    if (!vals.length) return;
+    await copyText(vals.join("\n"));
+    flashHeader(document.getElementById("hdrClSource"), "Copied! \u2714", "Compared Document \ud83d\udccb");
+  }
+
+  /* ── CELL CLICK COPY ──────────────────────────────────── */
+  function flashCell(td, origText) {
+    td.classList.add("cell-flashed");
+    const saved = td.textContent;
+    td.textContent = "\u2714 Copied";
+    window.setTimeout(() => { td.textContent = origText; td.classList.remove("cell-flashed"); }, 900);
+  }
+
+  async function handleCellCopy(e) {
+    const td = e.target.closest("td.cell-copy");
+    if (!td) return;
+    const text = td.dataset.copyVal !== undefined ? td.dataset.copyVal : td.textContent.trim();
+    if (!text) return;
+    await copyText(text);
+    flashCell(td, td.textContent.trim());
+  }
+
+  /* ── CHECKLIST VIEW TOGGLE ────────────────────────────── */
+  function setChecklistView(view) {
+    checklistView = view;
+    document.getElementById("clToggleCurrent").classList.toggle("active", view === "current");
+    document.getElementById("clTogglePrevious").classList.toggle("active", view === "previous");
+    state.checklistRows = makeChecklistRows(state.results);
+    renderChecklist();
+  }
+
+  function toCsv(rows, opts = {}) {
+    const hdrs = ["Status","Code","Original Previous","Original Current"];
+    if (opts.desc !== false) hdrs.push("Description");
+    if (opts.source) hdrs.push("Source");
+    if (opts.notes) hdrs.push("User Note");
+    hdrs.push("Edition","System Note");
+    const body = rows.map(r => {
+      const cells = [r.status, r.displayCode||r.normalizedCode, r.originalPrevious, r.originalCurrent];
+      if (opts.desc !== false) cells.push(r.description);
+      if (opts.source) cells.push(r.source||"Current Policy");
+      if (opts.notes) cells.push(state.rowNotes.get(r.normalizedCode)||"");
+      cells.push(r.edition, r.notes);
+      return cells;
+    });
+    return [hdrs,...body].map(row => row.map(c => `"${String(c||"").replace(/"/g,'""')}"`).join(",")).join("\n");
+  }
+
+  function toExcelHtml(rows, opts = {}) {
+    const src = el.resultViewSelect.value;
+    const label = src === "all" ? "All compared documents" : displaySrcName(src);
+    const hdrs = ["Status","Code","Original Previous","Original Current"];
+    if (opts.desc !== false) hdrs.push("Description");
+    if (opts.source) hdrs.push("Source");
+    if (opts.notes) hdrs.push("User Note");
+    hdrs.push("Edition");
+    const body = rows.map(r => {
+      const cells = [r.status, r.displayCode||r.normalizedCode, r.originalPrevious, r.originalCurrent];
+      if (opts.desc !== false) cells.push(r.description);
+      if (opts.source) cells.push(r.source||"Current Policy");
+      if (opts.notes) cells.push(state.rowNotes.get(r.normalizedCode)||"");
+      cells.push(r.edition);
+      return cells;
+    });
+    const tbl = (h,b) => `<table border="1"><thead><tr>${h.map(c=>`<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${b.map(row=>`<tr>${row.map(c=>`<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+    return `<!doctype html><html><head><meta charset="utf-8"></head><body><h1>${esc(label)}</h1>${tbl(hdrs,body)}</body></html>`;
+  }
+
+  /* ── SMART EXPORT ─────────────────────────────────────── */
+  function smartRows() {
+    let rows = baseRows();
+    if (document.getElementById("optDiffsOnly").checked || !document.getElementById("optMatches").checked) {
+      rows = rows.filter(r => r.status !== "Match");
+    }
+    return rows;
+  }
+
+  function smartOpts() {
+    return {
+      desc:   document.getElementById("optDescriptions").checked,
+      source: document.getElementById("optSource").checked,
+      notes:  document.getElementById("optUserNotes").checked,
+    };
+  }
+
+  async function smCopyExcel() {
+    const rows = smartRows(); const opts = smartOpts();
+    const hdrs = ["Status","Code"];
+    if (opts.desc) hdrs.push("Description");
+    if (opts.source) hdrs.push("Source");
+    if (opts.notes) hdrs.push("User Note");
+    hdrs.push("Edition");
+    const body = rows.map(r => {
+      const cells = [r.status, r.displayCode||r.normalizedCode];
+      if (opts.desc) cells.push(r.description);
+      if (opts.source) cells.push(r.source||"Current Policy");
+      if (opts.notes) cells.push(state.rowNotes.get(r.normalizedCode)||"");
+      cells.push(r.edition);
+      return cells;
+    });
+    const tsv = [hdrs,...body].map(row => row.map(c => String(c||"").replace(/\t/g," ").replace(/\n/g," ")).join("\t")).join("\n");
+    await copyText(tsv);
+    flashBtn("smCopyExcelBtn","✓ Copied!","📋 Copy for Excel");
+  }
+
+  async function smCopyNumbers() {
+    const text = smartRows().map(r => r.displayCode||r.normalizedCode).filter(Boolean).join("\n");
+    await copyText(text);
+    flashBtn("smCopyNumbersBtn","✓ Copied!","📋 Numbers Only");
+  }
+
+  /* ── DRAFT ────────────────────────────────────────────── */
   function draftPayload() {
     return {
       savedAt: new Date().toISOString(),
-      previousInput: elements.previousInput.value,
-      currentInput: elements.currentInput.value,
-      quoteInput: elements.quoteInput.value,
-      fourthInput: elements.fourthInput.value,
-      prefixes: elements.prefixInput.value,
-      quoteVisible: !document.getElementById("quotePane").classList.contains("hidden"),
+      previousInput: el.previousInput.value,
+      currentInput:  el.currentInput.value,
+      quoteInput:    el.quoteInput.value,
+      fourthInput:   el.fourthInput.value,
+      prefixes: el.prefixInput.value,
+      quoteVisible:  !document.getElementById("quotePane").classList.contains("hidden"),
       fourthVisible: !document.getElementById("fourthPane").classList.contains("hidden"),
-      resultView: selectedSource(),
+      resultView: el.resultViewSelect.value,
+      rowNotes: Array.from(state.rowNotes.entries()),
+      customEdits: Array.from(state.customEdits.entries()),
+      pinnedCodes: Array.from(state.pinnedCodes),
     };
   }
 
   function updateMemoryStatus(savedAt) {
-    if (!elements.memoryStatus) return;
-    elements.memoryStatus.textContent = savedAt
-      ? `Saved locally ${new Date(savedAt).toLocaleString()}.`
-      : "No saved draft yet.";
+    if (el.memoryStatus) el.memoryStatus.textContent = savedAt ? `Saved locally ${new Date(savedAt).toLocaleString()}.` : "No saved draft yet.";
   }
 
   function saveDraft() {
     try {
-      const payload = draftPayload();
-      localStorage.setItem(draftStorageKey, JSON.stringify(payload));
-      updateMemoryStatus(payload.savedAt);
-    } catch (error) {
-      if (elements.memoryStatus) elements.memoryStatus.textContent = "Draft memory is unavailable in this browser.";
+      const p = draftPayload();
+      localStorage.setItem(draftKey, JSON.stringify(p));
+      updateMemoryStatus(p.savedAt);
+    } catch (e) {
+      if (el.memoryStatus) el.memoryStatus.textContent = "Draft memory unavailable in this browser.";
     }
   }
 
   function scheduleDraftSave() {
-    window.clearTimeout(draftSaveTimer);
-    draftSaveTimer = window.setTimeout(saveDraft, 450);
+    window.clearTimeout(draftTimer);
+    draftTimer = window.setTimeout(saveDraft, 450);
   }
 
   function loadDraft() {
     try {
-      const raw = localStorage.getItem(draftStorageKey);
-      if (!raw) {
-        updateMemoryStatus(null);
-        return false;
-      }
-
-      const draft = JSON.parse(raw);
-      elements.previousInput.value = draft.previousInput || "";
-      elements.currentInput.value = draft.currentInput || "";
-      elements.quoteInput.value = draft.quoteInput || "";
-      elements.fourthInput.value = draft.fourthInput || "";
-      elements.prefixInput.value = draft.prefixes || elements.prefixInput.value;
-      if (draft.quoteVisible || draft.quoteInput) document.getElementById("quotePane").classList.remove("hidden");
-      if (draft.fourthVisible || draft.fourthInput) document.getElementById("fourthPane").classList.remove("hidden");
-      if (draft.resultView && elements.resultViewSelect.querySelector(`option[value="${draft.resultView}"]`)) {
-        elements.resultViewSelect.value = draft.resultView;
-      }
-      updateMemoryStatus(draft.savedAt);
+      const raw = localStorage.getItem(draftKey);
+      if (!raw) { updateMemoryStatus(null); return false; }
+      const d = JSON.parse(raw);
+      el.previousInput.value = d.previousInput || "";
+      el.currentInput.value  = d.currentInput  || "";
+      el.quoteInput.value    = d.quoteInput    || "";
+      el.fourthInput.value   = d.fourthInput   || "";
+      el.prefixInput.value   = d.prefixes || el.prefixInput.value;
+      if (d.quoteVisible  || d.quoteInput)  document.getElementById("quotePane").classList.remove("hidden");
+      if (d.fourthVisible || d.fourthInput) document.getElementById("fourthPane").classList.remove("hidden");
+      const opt = el.resultViewSelect.querySelector(`option[value="${d.resultView}"]`);
+      if (d.resultView && opt) el.resultViewSelect.value = d.resultView;
+      if (d.rowNotes)    state.rowNotes    = new Map(d.rowNotes);
+      if (d.customEdits) state.customEdits = new Map(d.customEdits);
+      if (d.pinnedCodes) state.pinnedCodes = new Set(d.pinnedCodes);
+      updateMemoryStatus(d.savedAt);
       return true;
-    } catch (error) {
-      updateMemoryStatus(null);
-      return false;
-    }
+    } catch (e) { updateMemoryStatus(null); return false; }
   }
 
   function clearSavedDraft() {
-    try {
-      localStorage.removeItem(draftStorageKey);
-    } catch (error) {
-      // Current page data remains available even if browser storage fails.
-    }
+    try { localStorage.removeItem(draftKey); } catch (e) { }
     updateMemoryStatus(null);
   }
 
+  /* ── UNDO ─────────────────────────────────────────────── */
+  function pushUndo() {
+    state.undoSnapshot = {
+      previousInput: el.previousInput.value,
+      currentInput:  el.currentInput.value,
+      quoteInput:    el.quoteInput.value,
+      fourthInput:   el.fourthInput.value,
+      results: [...state.results],
+      checklistRows: [...state.checklistRows],
+      previousItems: [...state.previousItems],
+      currentItems:  [...state.currentItems],
+    };
+  }
+
+  function showUndo() {
+    el.undoToast.classList.add("show");
+    window.setTimeout(() => el.undoToast.classList.remove("show"), 7000);
+  }
+
+  function undoClear() {
+    if (!state.undoSnapshot) return;
+    const s = state.undoSnapshot;
+    el.previousInput.value = s.previousInput;
+    el.currentInput.value  = s.currentInput;
+    el.quoteInput.value    = s.quoteInput;
+    el.fourthInput.value   = s.fourthInput;
+    state.results       = s.results;
+    state.checklistRows = s.checklistRows;
+    state.previousItems = s.previousItems;
+    state.currentItems  = s.currentItems;
+    state.undoSnapshot  = null;
+    renderPreview(el.previousPreview, state.previousItems);
+    renderPreview(el.currentPreview,  state.currentItems);
+    renderResults(); renderChecklist();
+    updateMetrics(summarize(state.results), null);
+    drawCharts(summarize(state.results));
+    updateFilterCounts();
+    el.undoToast.classList.remove("show");
+  }
+
+  /* ── CLEAR ALL ────────────────────────────────────────── */
+  function clearAll() {
+    pushUndo();
+    el.previousInput.value = ""; el.currentInput.value = ""; el.quoteInput.value = ""; el.fourthInput.value = "";
+    state.previousItems = []; state.currentItems = []; state.quoteItems = []; state.fourthItems = [];
+    state.results = []; state.checklistRows = [];
+    renderPreview(el.previousPreview, []); renderPreview(el.currentPreview, []);
+    renderPreview(el.quotePreview, []);    renderPreview(el.fourthPreview, []);
+    renderResults(); renderChecklist();
+    updateMetrics({}, null); updateFilterCounts(); drawCharts({});
+    el.lastCompared.textContent = "Not compared";
+    el.comparisonTime.textContent = "0.00 sec";
+    showUndo();
+  }
+
+  /* ── PLAY INLINE ──────────────────────────────────────── */
+  function togglePin(code) {
+    if (state.pinnedCodes.has(code)) state.pinnedCodes.delete(code);
+    else state.pinnedCodes.add(code);
+    renderResults(); scheduleDraftSave();
+  }
+
+  /* ── NOTES ────────────────────────────────────────────── */
+  function openNote(code) {
+    noteTarget = code;
+    el.noteCodeBadge.textContent = code;
+    el.noteTextarea.value = state.rowNotes.get(code) || "";
+    el.noteDialog.showModal();
+    window.setTimeout(() => el.noteTextarea.focus(), 60);
+  }
+
+  function saveNote() {
+    if (!noteTarget) return;
+    const v = el.noteTextarea.value.trim();
+    if (v) state.rowNotes.set(noteTarget, v);
+    else   state.rowNotes.delete(noteTarget);
+    el.noteDialog.close(); noteTarget = null;
+    renderResults(); scheduleDraftSave();
+  }
+
+  /* ── EDITABLE CELLS ───────────────────────────────────── */
+  el.resultsBody.addEventListener("focus", e => {
+    const ce = e.target.closest("[contenteditable]");
+    if (!ce) return;
+    ce.textContent = ce.textContent;
+  }, true);
+
+  el.resultsBody.addEventListener("blur", e => {
+    const ce = e.target.closest("[contenteditable]");
+    if (!ce) return;
+    const code  = ce.dataset.code;
+    const field = ce.dataset.field;
+    if (!code || !field) return;
+    const value = ce.textContent.trim();
+    const orig  = state.results.find(r => r.normalizedCode === code);
+    const existing = state.customEdits.get(code) || {};
+    if (field === "displayCode") {
+      const origVal = orig ? (orig.displayCode || orig.normalizedCode) : "";
+      if (value !== origVal) existing.displayCode = value;
+      else delete existing.displayCode;
+    } else if (field === "description") {
+      const origVal = orig ? orig.description : "";
+      if (value !== origVal) existing.description = value;
+      else delete existing.description;
+    }
+    if (Object.keys(existing).length) state.customEdits.set(code, existing);
+    else state.customEdits.delete(code);
+    scheduleDraftSave();
+  }, true);
+
+  el.resultsBody.addEventListener("keydown", e => {
+    if (e.target.closest("[contenteditable]")) {
+      if (e.key === "Enter") { e.preventDefault(); e.target.blur(); }
+      if (e.key === "Escape") { e.target.blur(); }
+    }
+  });
+
+  /* ── FILTER CHIPS ─────────────────────────────────────── */
+  const chipMap = {
+    chipMatch: "Match",
+    chipAdded: "Added",
+    chipRemoved: "Removed",
+    chipChanged: "Edition Changed",
+    chipDescChanged: "Description Changed",
+    chipTypo: "Possible Typo",
+    chipUnknown: "Unknown Format"
+  };
+  for (const [id, status] of Object.entries(chipMap)) {
+    document.getElementById(id).addEventListener("click", () => {
+      state.filters[status] = !state.filters[status];
+      document.getElementById(id).classList.toggle("off", !state.filters[status]);
+      renderResults();
+    });
+  }
+
+  /* ── THEME ────────────────────────────────────────────── */
   function applyTheme(theme) {
     document.documentElement.dataset.theme = theme;
-    elements.themeToggleBtn.textContent = theme === "dark" ? "Light Mode" : "Dark Mode";
+    el.themeToggleBtn.textContent = theme === "dark" ? "Light Mode" : "Dark Mode";
   }
 
   function toggleTheme() {
-    const nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
-    applyTheme(nextTheme);
-    drawCharts(summarize(state.results));
-    try {
-      localStorage.setItem("formsComparatorTheme", nextTheme);
-    } catch (error) {
-      // Theme preference only; policy data is never stored.
+    const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    applyTheme(next); drawCharts(summarize(state.results));
+    try { localStorage.setItem("formsComparatorTheme", next); } catch (e) { }
+  }
+
+  /* ── KEYBOARD SHORTCUTS ───────────────────────────────── */
+  document.addEventListener("keydown", e => {
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key === "1") { e.preventDefault(); compare(); }
+      else if (e.key === "2") { e.preventDefault(); el.smartExportModal.showModal(); }
+      else if (e.key === "f" || e.key === "F") { e.preventDefault(); el.resultsSearch.focus(); el.resultsSearch.select(); }
+      else if ((e.key === "z" || e.key === "Z") && state.undoSnapshot) { e.preventDefault(); undoClear(); }
     }
-  }
+  });
 
-  function clearAll() {
-    elements.previousInput.value = "";
-    elements.currentInput.value = "";
-    elements.quoteInput.value = "";
-    elements.fourthInput.value = "";
-    state.previousItems = [];
-    state.currentItems = [];
-    state.quoteItems = [];
-    state.fourthItems = [];
-    state.results = [];
-    state.checklistRows = [];
-    renderPreview(elements.previousPreview, []);
-    renderPreview(elements.currentPreview, []);
-    renderPreview(elements.quotePreview, []);
-    renderPreview(elements.fourthPreview, []);
-    renderResults();
-    renderChecklist();
-    updateMetrics({}, null);
-    drawCharts({});
-    elements.lastCompared.textContent = "Not compared";
-    elements.comparisonTime.textContent = "0.00 sec";
-  }
-
+  /* ── EVENT LISTENERS ──────────────────────────────────── */
   document.getElementById("cleanPreviousBtn").addEventListener("click", cleanPrevious);
   document.getElementById("cleanCurrentBtn").addEventListener("click", cleanCurrent);
   document.getElementById("cleanQuoteBtn").addEventListener("click", cleanQuote);
   document.getElementById("cleanFourthBtn").addEventListener("click", cleanFourth);
   document.getElementById("compareBtn").addEventListener("click", compare);
-  document.getElementById("applySettingsBtn").addEventListener("click", () => {
-    state.prefixes = window.ComparatorParser.parsePrefixes(elements.prefixInput.value);
-    cleanPrevious();
-    cleanCurrent();
-    cleanQuote();
-    cleanFourth();
+  document.getElementById("compareBtnWorkspace").addEventListener("click", compare);
+  document.getElementById("toggleSidebarBtn").addEventListener("click", () => {
+    document.querySelector(".app-shell").classList.toggle("sidebar-collapsed");
   });
+  document.getElementById("hdrCopyCode").addEventListener("click", copyColumnCode);
+  document.getElementById("hdrCopyDesc").addEventListener("click", copyColumnDesc);
+  document.getElementById("hdrCopyEdit").addEventListener("click", copyColumnEdit);
+
+  document.getElementById("applySettingsBtn").addEventListener("click", () => {
+    state.prefixes = window.ComparatorParser.parsePrefixes(el.prefixInput.value);
+    cleanPrevious(); cleanCurrent(); cleanQuote(); cleanFourth();
+  });
+
   document.getElementById("loadSamplesBtn").addEventListener("click", () => {
-    elements.previousInput.value = samples.previous;
-    elements.currentInput.value = samples.current;
-    elements.quoteInput.value = samples.quote;
+    el.previousInput.value = samples.previous;
+    el.currentInput.value  = samples.current;
+    el.quoteInput.value    = samples.quote;
     document.getElementById("quotePane").classList.remove("hidden");
     compare();
   });
+
   document.getElementById("showQuoteBtn").addEventListener("click", () => {
-    document.getElementById("quotePane").classList.remove("hidden", "collapsed-doc");
+    document.getElementById("quotePane").classList.remove("hidden","collapsed-doc");
     document.getElementById("collapseQuoteBtn").textContent = "Minimize";
-    elements.quoteInput.focus();
-    scheduleDraftSave();
+    el.quoteInput.focus(); scheduleDraftSave();
   });
+
   document.getElementById("showFourthBtn").addEventListener("click", () => {
-    document.getElementById("fourthPane").classList.remove("hidden", "collapsed-doc");
+    document.getElementById("fourthPane").classList.remove("hidden","collapsed-doc");
     document.getElementById("collapseFourthBtn").textContent = "Minimize";
-    elements.fourthInput.focus();
-    scheduleDraftSave();
+    el.fourthInput.focus(); scheduleDraftSave();
   });
+
   document.getElementById("collapseQuoteBtn").addEventListener("click", () => {
-    const pane = document.getElementById("quotePane");
-    pane.classList.toggle("collapsed-doc");
-    document.getElementById("collapseQuoteBtn").textContent = pane.classList.contains("collapsed-doc") ? "Expand" : "Minimize";
+    const p = document.getElementById("quotePane"); p.classList.toggle("collapsed-doc");
+    document.getElementById("collapseQuoteBtn").textContent = p.classList.contains("collapsed-doc") ? "Expand" : "Minimize";
   });
+
   document.getElementById("collapseFourthBtn").addEventListener("click", () => {
-    const pane = document.getElementById("fourthPane");
-    pane.classList.toggle("collapsed-doc");
-    document.getElementById("collapseFourthBtn").textContent = pane.classList.contains("collapsed-doc") ? "Expand" : "Minimize";
+    const p = document.getElementById("fourthPane"); p.classList.toggle("collapsed-doc");
+    document.getElementById("collapseFourthBtn").textContent = p.classList.contains("collapsed-doc") ? "Expand" : "Minimize";
   });
+
   document.getElementById("removeQuoteBtn").addEventListener("click", () => {
-    elements.quoteInput.value = "";
-    state.quoteItems = [];
+    el.quoteInput.value = ""; state.quoteItems = [];
     document.getElementById("quotePane").classList.add("hidden");
-    if (selectedSource() === "Quote / 3rd Document") elements.resultViewSelect.value = "all";
-    renderPreview(elements.quotePreview, []);
-    compare();
+    if (el.resultViewSelect.value === "Quote / 3rd Document") el.resultViewSelect.value = "all";
+    renderPreview(el.quotePreview, []); compare();
   });
+
   document.getElementById("removeFourthBtn").addEventListener("click", () => {
-    elements.fourthInput.value = "";
-    state.fourthItems = [];
+    el.fourthInput.value = ""; state.fourthItems = [];
     document.getElementById("fourthPane").classList.add("hidden");
-    if (selectedSource() === "4th Document") elements.resultViewSelect.value = "all";
-    renderPreview(elements.fourthPreview, []);
-    compare();
+    if (el.resultViewSelect.value === "4th Document") el.resultViewSelect.value = "all";
+    renderPreview(el.fourthPreview, []); compare();
   });
+
   document.getElementById("resultViewSelect").addEventListener("change", () => {
-    renderResults();
-    renderChecklist();
+    renderResults(); renderChecklist(); updateFilterCounts();
   });
-  elements.resultsBody.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-result-group]");
-    if (!button) return;
-    const source = button.getAttribute("data-result-group");
-    if (state.collapsedResultGroups.has(source)) {
-      state.collapsedResultGroups.delete(source);
-    } else {
-      state.collapsedResultGroups.add(source);
+
+  // Results body delegation: group collapse, pin, note
+  el.resultsBody.addEventListener("click", e => {
+    const gb = e.target.closest("[data-group]");
+    if (gb) {
+      const src = gb.getAttribute("data-group");
+      if (state.collapsedGroups.has(src)) state.collapsedGroups.delete(src); else state.collapsedGroups.add(src);
+      renderResults(); return;
     }
+    const pb = e.target.closest("[data-pin]");
+    if (pb) { togglePin(pb.getAttribute("data-pin")); return; }
+    const nb = e.target.closest("[data-note]");
+    if (nb) { openNote(nb.getAttribute("data-note")); return; }
+  });
+
+  // SBS body delegation
+  el.sbsBody.addEventListener("click", e => {
+    const pb = e.target.closest("[data-pin]");  if (pb) { togglePin(pb.getAttribute("data-pin")); return; }
+    const nb = e.target.closest("[data-note]"); if (nb) { openNote(nb.getAttribute("data-note")); return; }
+  });
+
+  // Search
+  el.resultsSearch.addEventListener("input", e => { state.searchQuery = e.target.value; renderResults(); });
+
+  // Diffs Only toggle
+  document.getElementById("diffsOnlyBtn").addEventListener("click", () => {
+    state.diffsOnly = !state.diffsOnly;
+    const btn = document.getElementById("diffsOnlyBtn");
+    btn.classList.toggle("toggle-on", state.diffsOnly);
+    btn.textContent = state.diffsOnly ? "✓ Diffs Only" : "Diffs Only";
     renderResults();
   });
+
+  // Side-by-Side toggle
+  document.getElementById("sideBySideBtn").addEventListener("click", () => {
+    state.sideBySide = !state.sideBySide;
+    const btn = document.getElementById("sideBySideBtn");
+    btn.classList.toggle("toggle-on", state.sideBySide);
+    btn.textContent = state.sideBySide ? "✓ Side by Side" : "Side by Side";
+    renderResults();
+  });
+
+  // Clear
   document.getElementById("clearBtn").addEventListener("click", clearAll);
+  document.getElementById("clearBtnWorkspace").addEventListener("click", clearAll);
+
+  // Draft
   document.getElementById("saveDraftBtn").addEventListener("click", saveDraft);
   document.getElementById("clearDraftBtn").addEventListener("click", clearSavedDraft);
+
+  // Theme
   document.getElementById("themeToggleBtn").addEventListener("click", toggleTheme);
+
+  // Export buttons
   document.getElementById("exportCsvBtn").addEventListener("click", () => {
-    downloadFile("insurance-forms-comparison.csv", toCsv(selectedResults()), "text/csv;charset=utf-8");
+    downloadFile("insurance-forms-comparison.csv", toCsv(baseRows()), "text/csv;charset=utf-8");
   });
   document.getElementById("exportExcelBtn").addEventListener("click", () => {
-    downloadFile("insurance-forms-comparison.xls", excelHtml(), "application/vnd.ms-excel;charset=utf-8");
+    downloadFile("insurance-forms-comparison.xls", toExcelHtml(baseRows()), "application/vnd.ms-excel;charset=utf-8");
   });
   document.getElementById("exportJsonBtn").addEventListener("click", () => {
-    downloadFile("insurance-forms-comparison.json", JSON.stringify(selectedResults(), null, 2), "application/json;charset=utf-8");
+    downloadFile("insurance-forms-comparison.json", JSON.stringify(baseRows(), null, 2), "application/json;charset=utf-8");
   });
+
+  // New copy buttons
+  document.getElementById("copyFormNumbersBtn").addEventListener("click", copyFormNumbers);
+  document.getElementById("copyDescriptionsBtn").addEventListener("click", copyDescriptions);
+  document.getElementById("copyTableBtn").addEventListener("click", copyEntireTable);
+
+  // Smart Export modal
+  document.getElementById("smartExportBtn").addEventListener("click", () => el.smartExportModal.showModal());
+  document.getElementById("closeSmartExportBtn").addEventListener("click", () => el.smartExportModal.close());
+  document.getElementById("smCopyExcelBtn").addEventListener("click", smCopyExcel);
+  document.getElementById("smCopyNumbersBtn").addEventListener("click", smCopyNumbers);
+  document.getElementById("smDownloadCsvBtn").addEventListener("click", () => {
+    downloadFile("smart-export.csv", toCsv(smartRows(), smartOpts()), "text/csv;charset=utf-8");
+  });
+  document.getElementById("smDownloadExcelBtn").addEventListener("click", () => {
+    downloadFile("smart-export.xls", toExcelHtml(smartRows(), smartOpts()), "application/vnd.ms-excel;charset=utf-8");
+  });
+
+  // Note dialog
+  document.getElementById("saveNoteBtn").addEventListener("click", saveNote);
+  document.getElementById("clearNoteBtn").addEventListener("click", () => { el.noteTextarea.value = ""; });
+  document.getElementById("closeNoteBtn").addEventListener("click", () => { el.noteDialog.close(); noteTarget = null; });
+  el.noteTextarea.addEventListener("keydown", e => { if (e.key === "Enter" && e.ctrlKey) { e.preventDefault(); saveNote(); } });
+
+  // Undo
+  document.getElementById("undoBtn").addEventListener("click", undoClear);
+
+  // Checklist
   document.getElementById("copyExcelBtn").addEventListener("click", copyChecklist);
   document.getElementById("downloadTsvBtn").addEventListener("click", () => {
-    downloadFile("insurance-forms-checklist.tsv", checklistTsv(), "text/tab-separated-values;charset=utf-8");
+    const src = el.resultViewSelect.value;
+    const rows = src === "all" ? state.checklistRows : state.checklistRows.filter(r => r.source === src);
+    const hdrs = ["Form / Description","Edition","Status","Compared Document"];
+    const body = rows.map(r => [r.formDescription,r.edition,r.status,r.source]);
+    const tsv = [hdrs,...body].map(row => row.map(c => String(c||"").replace(/\t/g," ").replace(/\n/g," ")).join("\t")).join("\n");
+    downloadFile("insurance-forms-checklist.tsv", tsv, "text/tab-separated-values;charset=utf-8");
   });
+
+  // SBS column copy headers
+  document.getElementById("hdrSbsPrev").addEventListener("click", copySbsPrev);
+  document.getElementById("hdrSbsCurr").addEventListener("click", copySbsCurr);
+
+  // Checklist column copy headers
+  document.getElementById("hdrClForm").addEventListener("click", copyClForm);
+  document.getElementById("hdrClEdition").addEventListener("click", copyClEdition);
+  document.getElementById("hdrClStatus").addEventListener("click", copyClStatus);
+  document.getElementById("hdrClSource").addEventListener("click", copyClSource);
+
+  // Checklist Current / Previous toggle
+  document.getElementById("clToggleCurrent").addEventListener("click", () => setChecklistView("current"));
+  document.getElementById("clTogglePrevious").addEventListener("click", () => setChecklistView("previous"));
+
+  // Checklist cell-click copy (delegated)
+  el.excelChecklistBody.addEventListener("click", handleCellCopy);
+
+
+
+  // Dialog click-outside-to-close
+  [el.smartExportModal, el.noteDialog].forEach(dlg => {
+    dlg.addEventListener("click", e => { if (e.target === dlg) dlg.close(); });
+  });
+
+  // Service Worker (optional, only in live hosted version)
   if ("serviceWorker" in navigator && !document.documentElement.dataset.offlineCopy) {
-    navigator.serviceWorker.register("./service-worker.js").then((registration) => {
-      registration.update();
-      if (elements.offlineStatus) elements.offlineStatus.textContent = "Offline cache is active. The standalone download is also available.";
+    navigator.serviceWorker.register("./service-worker.js").then(reg => {
+      reg.update();
+      if (el.offlineStatus) el.offlineStatus.textContent = "Offline cache is active. The standalone download is also available.";
     }).catch(() => {
-      if (elements.offlineStatus) elements.offlineStatus.textContent = "Standalone offline download is available.";
+      if (el.offlineStatus) el.offlineStatus.textContent = "Standalone offline download is available.";
     });
   }
 
-  try {
-    applyTheme(localStorage.getItem("formsComparatorTheme") || "light");
-  } catch (error) {
-    applyTheme("light");
-  }
-  const hadDraft = loadDraft();
-  [elements.previousInput, elements.currentInput, elements.quoteInput, elements.fourthInput, elements.prefixInput].forEach((field) => {
-    field.addEventListener("input", scheduleDraftSave);
+  // Input auto-save draft & auto-compare (600ms debounce)
+  let autoCompareTimer = null;
+  [el.previousInput, el.currentInput, el.quoteInput, el.fourthInput, el.prefixInput].forEach(f => {
+    f.addEventListener("input", () => {
+      scheduleDraftSave();
+      window.clearTimeout(autoCompareTimer);
+      autoCompareTimer = window.setTimeout(compare, 600);
+    });
   });
   window.addEventListener("beforeunload", saveDraft);
-  renderPreview(elements.previousPreview, []);
-  renderPreview(elements.currentPreview, []);
-  renderPreview(elements.quotePreview, []);
-  renderPreview(elements.fourthPreview, []);
-  renderResults();
-  renderChecklist();
-  updateMetrics({}, null);
-  drawCharts({});
-  if (hadDraft && (elements.previousInput.value || elements.currentInput.value || elements.quoteInput.value || elements.fourthInput.value)) {
+
+  /* ── INIT ─────────────────────────────────────────────── */
+  try { applyTheme(localStorage.getItem("formsComparatorTheme") || "light"); }
+  catch (e) { applyTheme("light"); }
+
+  const hadDraft = loadDraft();
+
+  renderPreview(el.previousPreview, []);
+  renderPreview(el.currentPreview,  []);
+  renderPreview(el.quotePreview,    []);
+  renderPreview(el.fourthPreview,   []);
+  renderResults(); renderChecklist();
+  updateMetrics({}, null); updateFilterCounts(); drawCharts({});
+
+  if (hadDraft && (el.previousInput.value || el.currentInput.value || el.quoteInput.value || el.fourthInput.value)) {
     compare();
   }
 })();

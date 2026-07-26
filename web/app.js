@@ -1,4 +1,5 @@
 (function () {
+  /* ── SAMPLES ─────────────────────────────────────────── */
   const samples = {
     previous: [
       "CG20100413 ADDITIONAL INSURED - OWNERS, LESSEES OR CONTRACTORS",
@@ -23,677 +24,1224 @@
     ].join("\n"),
   };
 
+  /* ── STATE ────────────────────────────────────────────── */
   const state = {
     prefixes: window.ComparatorParser.defaultPrefixes.slice(),
-    previousItems: [],
-    currentItems: [],
-    quoteItems: [],
-    fourthItems: [],
-    results: [],
-    checklistRows: [],
-    collapsedResultGroups: new Set(),
+    previousItems: [], currentItems: [], quoteItems: [], fourthItems: [],
+    results: [], checklistRows: [],
+    collapsedGroups: new Set(),
+    // v2.0
+    filters: { Match: true, Added: true, Removed: true, "Edition Changed": true, "Description Changed": true, "Possible Typo": true, "Unknown Format": true },
+    searchQuery: "",
+    diffsOnly: false,
+    sideBySide: false,
+    pinnedCodes: new Set(),
+    rowNotes: new Map(),       // normalizedCode -> string
+    customEdits: new Map(),    // normalizedCode -> { displayCode?, description? }
+    undoSnapshot: null,
   };
 
-  const draftStorageKey = "formsComparatorDraftV1";
-  let draftSaveTimer = null;
+  const draftKey = "formsComparatorDraftV1";
+  let draftTimer = null;
+  let noteTarget = null;
 
-  const elements = {
-    previousInput: document.getElementById("previousInput"),
-    currentInput: document.getElementById("currentInput"),
-    quoteInput: document.getElementById("quoteInput"),
-    fourthInput: document.getElementById("fourthInput"),
-    previousPreview: document.getElementById("previousPreview"),
-    currentPreview: document.getElementById("currentPreview"),
-    quotePreview: document.getElementById("quotePreview"),
-    fourthPreview: document.getElementById("fourthPreview"),
-    resultsBody: document.getElementById("resultsBody"),
+  /* ── ELEMENT REFS ─────────────────────────────────────── */
+  const el = {
+    previousInput:      document.getElementById("previousInput"),
+    currentInput:       document.getElementById("currentInput"),
+    quoteInput:         document.getElementById("quoteInput"),
+    fourthInput:        document.getElementById("fourthInput"),
+    previousPreview:    document.getElementById("previousPreview"),
+    currentPreview:     document.getElementById("currentPreview"),
+    quotePreview:       document.getElementById("quotePreview"),
+    fourthPreview:      document.getElementById("fourthPreview"),
+    resultsBody:        document.getElementById("resultsBody"),
+    sbsBody:            document.getElementById("sbsBody"),
     excelChecklistBody: document.getElementById("excelChecklistBody"),
-    resultViewSelect: document.getElementById("resultViewSelect"),
-    prefixInput: document.getElementById("prefixInput"),
-    lastCompared: document.getElementById("lastCompared"),
-    comparisonTime: document.getElementById("comparisonTime"),
-    pieChart: document.getElementById("pieChart"),
-    barChart: document.getElementById("barChart"),
-    offlineStatus: document.getElementById("offlineStatus"),
-    themeToggleBtn: document.getElementById("themeToggleBtn"),
-    memoryStatus: document.getElementById("memoryStatus"),
+    resultViewSelect:   document.getElementById("resultViewSelect"),
+    prefixInput:        document.getElementById("prefixInput"),
+    lastCompared:       document.getElementById("lastCompared"),
+    comparisonTime:     document.getElementById("comparisonTime"),
+    pieChart:           document.getElementById("pieChart"),
+    barChart:           document.getElementById("barChart"),
+    offlineStatus:      document.getElementById("offlineStatus"),
+    themeToggleBtn:     document.getElementById("themeToggleBtn"),
+    memoryStatus:       document.getElementById("memoryStatus"),
+    resultsTableWrap:   document.getElementById("resultsTableWrap"),
+    sbsWrap:            document.getElementById("sbsWrap"),
+    resultsSearch:      document.getElementById("resultsSearch"),
+    diffsOnlyBtn:       document.getElementById("diffsOnlyBtn"),
+    sideBySideBtn:      document.getElementById("sideBySideBtn"),
+    undoToast:          document.getElementById("undoToast"),
+    smartExportModal:   document.getElementById("smartExportModal"),
+    noteDialog:         document.getElementById("noteDialog"),
+    noteCodeBadge:      document.getElementById("noteCodeBadge"),
+    noteTextarea:       document.getElementById("noteTextarea"),
+    exportScopeNote:    document.getElementById("exportScopeNote"),
   };
 
   const metricIds = {
-    Previous: "metricPrevious",
-    Current: "metricCurrent",
-    Match: "metricMatch",
-    Added: "metricAdded",
-    Removed: "metricRemoved",
-    "Edition Changed": "metricChanged",
-    "Unknown Format": "metricUnknown",
+    Previous: "metricPrevious", Current: "metricCurrent",
+    Match: "metricMatch", Added: "metricAdded", Removed: "metricRemoved",
+    "Edition Changed": "metricChanged", "Description Changed": "metricDescChanged",
+    "Possible Typo": "metricTypo", "Unknown Format": "metricUnknown",
     Completion: "metricCompletion",
   };
 
+  /* ── UTILS ────────────────────────────────────────────── */
   function statusClass(status) {
     return `status-${status.toLowerCase().replace(/\s+/g, "-")}`;
   }
 
-  function escapeHtml(value) {
-    return String(value || "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
+  function esc(v) {
+    return String(v || "")
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;").replace(/'/g,"&#039;");
   }
 
-  function renderPreview(target, items) {
-    target.innerHTML = items.length
-      ? items.map((item) => `
-          <tr class="${statusClass(item.parseStatus)}">
-            <td>${escapeHtml(item.parseStatus)}</td>
-            <td>${escapeHtml(item.displayCode)}</td>
-            <td>${escapeHtml(item.displayEdition)}</td>
-            <td>${escapeHtml(item.description)}</td>
-          </tr>
-        `).join("")
+  function highlight(text, q) {
+    if (!q) return esc(text);
+    const safe = esc(text);
+    const safeQ = esc(q).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (!safeQ) return safe;
+    return safe.replace(new RegExp(`(${safeQ})`, "gi"), '<make class="hl">$1</make>').replace(/<make/g, "<mark").replace(/\/make>/g, "/mark>");
+  }
+
+  function diffHighlight(prevText, currText, q) {
+    if (!prevText || !currText) {
+      return {
+        prev: highlight(prevText || "", q),
+        curr: highlight(currText || "", q)
+      };
+    }
+
+    const tokensA = prevText.split(/(\s+)/);
+    const tokensB = currText.split(/(\s+)/);
+
+    const wordsA = [];
+    const wordsB = [];
+
+    tokensA.forEach((tok, idx) => {
+      if (/\S/.test(tok)) wordsA.push({ text: tok, idx });
+    });
+    tokensB.forEach((tok, idx) => {
+      if (/\S/.test(tok)) wordsB.push({ text: tok, idx });
+    });
+
+    const dp = Array(wordsA.length + 1).fill(null).map(() => Array(wordsB.length + 1).fill(0));
+    for (let i = 1; i <= wordsA.length; i++) {
+      for (let j = 1; j <= wordsB.length; j++) {
+        if (wordsA[i - 1].text.toUpperCase() === wordsB[j - 1].text.toUpperCase()) {
+          dp[i][j] = dp[i - 1][j - 1] + 1;
+        } else {
+          dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+        }
+      }
+    }
+
+    let i = wordsA.length, j = wordsB.length;
+    const matchA = new Set();
+    const matchB = new Set();
+    while (i > 0 && j > 0) {
+      if (wordsA[i - 1].text.toUpperCase() === wordsB[j - 1].text.toUpperCase()) {
+        matchA.add(wordsA[i - 1].idx);
+        matchB.add(wordsB[j - 1].idx);
+        i--; j--;
+      } else if (dp[i - 1][j] >= dp[i][j - 1]) {
+        i--;
+      } else {
+        j--;
+      }
+    }
+
+    const resA = tokensA.map((tok, idx) => {
+      if (!/\S/.test(tok)) return esc(tok);
+      const isMatched = matchA.has(idx);
+      const formatted = highlight(tok, q);
+      return isMatched ? formatted : `<span class="diff-removed-inline">${formatted}</span>`;
+    }).join("");
+
+    const resB = tokensB.map((tok, idx) => {
+      if (!/\S/.test(tok)) return esc(tok);
+      const isMatched = matchB.has(idx);
+      const formatted = highlight(tok, q);
+      return isMatched ? formatted : `<span class="diff-added-inline">${formatted}</span>`;
+    }).join("");
+
+    return { prev: resA, curr: resB };
+  }
+
+  function flashBtn(id, done, orig) {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.textContent = done;
+    window.setTimeout(() => { btn.textContent = orig; }, 1600);
+  }
+
+  /* ── FILTER LOGIC ─────────────────────────────────────── */
+  function baseRows() {
+    const src = el.resultViewSelect.value;
+    return src === "all" ? state.results : state.results.filter(r => (r.source || "Current Policy") === src);
+  }
+
+  function getFiltered() {
+    let rows = baseRows();
+    if (state.diffsOnly) rows = rows.filter(r => r.status !== "Match");
+    rows = rows.filter(r => state.filters[r.status] !== false);
+    if (state.searchQuery) {
+      const q = state.searchQuery.toLowerCase();
+      rows = rows.filter(r =>
+        (r.normalizedCode || "").toLowerCase().includes(q) ||
+        (r.displayCode || "").toLowerCase().includes(q) ||
+        (r.description || "").toLowerCase().includes(q) ||
+        (r.originalPrevious || "").toLowerCase().includes(q) ||
+        (r.originalCurrent || "").toLowerCase().includes(q) ||
+        (r.status || "").toLowerCase().includes(q) ||
+        (state.rowNotes.get(r.normalizedCode) || "").toLowerCase().includes(q)
+      );
+    }
+    const pinned = rows.filter(r => state.pinnedCodes.has(r.normalizedCode));
+    const rest   = rows.filter(r => !state.pinnedCodes.has(r.normalizedCode));
+    return [...pinned, ...rest];
+  }
+
+  function updateFilterCounts() {
+    const rows = baseRows();
+    const c = { Match: 0, Added: 0, Removed: 0, "Edition Changed": 0, "Description Changed": 0, "Possible Typo": 0, "Unknown Format": 0 };
+    rows.forEach(r => { if (c[r.status] !== undefined) c[r.status]++; });
+    document.getElementById("cntMatch").textContent   = `(${c.Match})`;
+    document.getElementById("cntAdded").textContent   = `(${c.Added})`;
+    document.getElementById("cntRemoved").textContent = `(${c.Removed})`;
+    document.getElementById("cntChanged").textContent = `(${c["Edition Changed"]})`;
+    document.getElementById("cntDescChanged").textContent = `(${c["Description Changed"]})`;
+    document.getElementById("cntTypo").textContent   = `(${c["Possible Typo"]})`;
+    document.getElementById("cntUnknown").textContent = `(${c["Unknown Format"]})`;
+    updateScopeNote();
+  }
+
+  function updateScopeNote() {
+    const src = el.resultViewSelect.value;
+    const label = src === "all" ? "All documents" : displaySrcName(src);
+    const visible = getFiltered().length;
+    const total = baseRows().length;
+    el.exportScopeNote.textContent = `View: ${label} — ${visible} of ${total} rows visible.`;
+  }
+
+  /* ── RENDER PREVIEW ───────────────────────────────────── */
+  function renderPreview(tbody, items) {
+    tbody.innerHTML = items.length
+      ? items.map(i => `<tr class="${statusClass(i.parseStatus)}"><td>${esc(i.parseStatus)}</td><td>${esc(i.displayCode)}</td><td>${esc(i.displayEdition)}</td><td>${esc(i.description)}</td></tr>`).join("")
       : `<tr><td colspan="4">No parsed rows yet.</td></tr>`;
   }
 
+  /* ── RENDER RESULTS ───────────────────────────────────── */
   function renderResults() {
-    const rows = selectedResults();
+    if (state.sideBySide) { renderSBS(); return; }
+    el.resultsTableWrap.classList.remove("hidden");
+    el.sbsWrap.classList.add("hidden");
+
+    const rows = getFiltered();
+    updateFilterCounts();
+
     if (!rows.length) {
-      elements.resultsBody.innerHTML = `<tr><td colspan="8">Run a comparison to see results for the selected document.</td></tr>`;
-      updateExportScopeNote();
+      el.resultsBody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px;">No results match the current filters. Adjust filters or run a comparison.</td></tr>`;
       return;
     }
 
-    if (selectedSource() === "all") {
-      const groups = groupRowsBySource(rows);
-      elements.resultsBody.innerHTML = groups.map(({ source, rows: groupRows }) => {
-        const collapsed = state.collapsedResultGroups.has(source);
-        const counts = summarize(groupRows);
-        const meta = `${groupRows.length} rows | ${counts.Match || 0} match | ${counts.Added || 0} added | ${counts.Removed || 0} removed | ${counts["Edition Changed"] || 0} revised | ${counts["Unknown Format"] || 0} unknown`;
-        return `
-          <tr class="result-group-row">
-            <td colspan="8">
-              <button class="result-group-button" type="button" data-result-group="${escapeHtml(source)}">
-                ${collapsed ? "Expand" : "Minimize"} ${escapeHtml(displaySourceName(source))}
-              </button>
-              <span class="result-group-meta">${escapeHtml(meta)}</span>
-            </td>
-          </tr>
-          ${collapsed ? "" : groupRows.map(resultRowHtml).join("")}
-        `;
+    const src = el.resultViewSelect.value;
+    if (src === "all") {
+      const groups = groupBySource(rows);
+      el.resultsBody.innerHTML = groups.map(({ source, rows: gr }) => {
+        const collapsed = state.collapsedGroups.has(source);
+        const cnt = summarize(gr);
+        const meta = `${gr.length} rows | ${cnt.Match||0} match | ${cnt.Added||0} added | ${cnt.Removed||0} removed | ${cnt["Edition Changed"]||0} revised | ${cnt["Unknown Format"]||0} unknown`;
+        return `<tr class="result-group-row"><td colspan="9">
+            <button class="result-group-button" type="button" data-group="${esc(source)}">${collapsed ? "▶" : "▼"} ${esc(displaySrcName(source))}</button>
+            <span class="result-group-meta">${esc(meta)}</span>
+          </td></tr>
+          ${collapsed ? "" : gr.map(resultRowHtml).join("")}`;
       }).join("");
-      updateExportScopeNote();
       return;
     }
-
-    elements.resultsBody.innerHTML = rows.map(resultRowHtml).join("");
-    updateExportScopeNote();
+    el.resultsBody.innerHTML = rows.map(resultRowHtml).join("");
   }
 
   function resultRowHtml(item) {
-    return `
-          <tr class="${statusClass(item.status)}">
-            <td>${escapeHtml(item.status)}</td>
-            <td>${escapeHtml(item.source || "Current Policy")}</td>
-            <td>${escapeHtml(item.displayCode || item.normalizedCode)}</td>
-            <td>${escapeHtml(item.originalPrevious)}</td>
-            <td>${escapeHtml(item.originalCurrent)}</td>
-            <td>${escapeHtml(item.description)}</td>
-            <td>${escapeHtml(item.edition)}</td>
-            <td>${escapeHtml(item.notes)}</td>
-          </tr>
-        `;
+    const code    = item.normalizedCode || "";
+    const pinned  = state.pinnedCodes.has(code);
+    const hasNote = state.rowNotes.has(code) && state.rowNotes.get(code).trim();
+    const edit    = state.customEdits.get(code) || {};
+    const dispCode = edit.displayCode !== undefined ? edit.displayCode : (item.displayCode || item.normalizedCode);
+    const desc     = edit.description !== undefined ? edit.description : item.description;
+    const q = state.searchQuery;
+    const diffs = diffHighlight(item.originalPrevious, item.originalCurrent, q);
+    return `<tr class="${statusClass(item.status)}${pinned ? " row-pinned" : ""}" data-code="${esc(code)}">
+      <td>${esc(item.status)}</td>
+      <td>${esc(item.source || "Current Policy")}</td>
+      <td><span contenteditable="true" data-field="displayCode" data-code="${esc(code)}">${highlight(dispCode, q)}</span></td>
+      <td>${diffs.prev}</td>
+      <td>${diffs.curr}</td>
+      <td><span contenteditable="true" data-field="description" data-code="${esc(code)}">${highlight(desc, q)}</span></td>
+      <td>${esc(item.edition)}</td>
+      <td>${esc(item.notes)}</td>
+      <td class="row-actions-td">
+        <button class="pin-btn${pinned ? " on" : ""}" type="button" data-pin="${esc(code)}" title="${pinned ? "Unpin" : "Pin to top"}">${pinned ? "⭐" : "☆"}</button>
+        <button class="note-btn${hasNote ? " on" : ""}" type="button" data-note="${esc(code)}" title="${hasNote ? "Edit note" : "Add note"}">${hasNote ? "📝" : "🖊"}</button>
+      </td>
+    </tr>`;
   }
 
-  function groupRowsBySource(rows) {
-    const sourceOrder = ["Current Policy", "Quote / 3rd Document", "4th Document"];
-    return sourceOrder
-      .map((source) => ({ source, rows: rows.filter((row) => (row.source || "Current Policy") === source) }))
-      .filter((group) => group.rows.length);
+  /* ── SIDE-BY-SIDE ─────────────────────────────────────── */
+  function renderSBS() {
+    el.resultsTableWrap.classList.add("hidden");
+    el.sbsWrap.classList.remove("hidden");
+    const rows = getFiltered();
+    updateFilterCounts();
+    if (!rows.length) {
+      el.sbsBody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px;">No results. Run a comparison first.</td></tr>`;
+      return;
+    }
+    el.sbsBody.innerHTML = rows.map(item => {
+      const code = item.normalizedCode || "";
+      const pinned = state.pinnedCodes.has(code);
+      const hasNote = state.rowNotes.has(code) && state.rowNotes.get(code).trim();
+      let prev = "", curr = "";
+      switch (item.status) {
+        case "Match":
+          prev = esc(item.originalPrevious || item.displayCode);
+          curr = esc(item.originalCurrent  || item.displayCode);
+          break;
+        case "Removed":
+          prev = `<span class="sbs-removed">${esc(item.originalPrevious || item.displayCode)}</span>`;
+          curr = `<span class="sbs-empty">— not present —</span>`;
+          break;
+        case "Added":
+          prev = `<span class="sbs-empty">— not present —</span>`;
+          curr = `<span class="sbs-added">${esc(item.originalCurrent || item.displayCode)}</span>`;
+          break;
+        case "Edition Changed":
+        case "Description Changed":
+        case "Possible Typo":
+          const sbsDiff = diffHighlight(item.originalPrevious, item.originalCurrent, "");
+          prev = `<span class="sbs-changed">${sbsDiff.prev}</span>`;
+          curr = `<span class="sbs-changed">${sbsDiff.curr}</span>`;
+          break;
+        default:
+          prev = esc(item.originalPrevious || item.displayCode);
+          curr = esc(item.originalCurrent  || item.displayCode);
+      }
+      return `<tr class="${statusClass(item.status)}${pinned ? " row-pinned" : ""}" data-code="${esc(code)}">
+        <td>${esc(item.status)}</td>
+        <td>${prev}</td>
+        <td>${curr}</td>
+        <td class="row-actions-td">
+          <button class="pin-btn${pinned ? " on" : ""}" type="button" data-pin="${esc(code)}">${pinned ? "⭐" : "☆"}</button>
+          <button class="note-btn${hasNote ? " on" : ""}" type="button" data-note="${esc(code)}">${hasNote ? "📝" : "🖊"}</button>
+        </td>
+      </tr>`;
+    }).join("");
   }
 
-  function displaySourceName(source) {
-    if (source === "Quote / 3rd Document") return "3rd Document";
-    return source;
+  /* ── GROUP HELPERS ────────────────────────────────────── */
+  function groupBySource(rows) {
+    const order = ["Current Policy", "Quote / 3rd Document", "4th Document"];
+    return order
+      .map(src => ({ source: src, rows: rows.filter(r => (r.source || "Current Policy") === src) }))
+      .filter(g => g.rows.length);
   }
 
-  function updateExportScopeNote() {
-    const note = document.getElementById("exportScopeNote");
-    if (!note) return;
-    const source = selectedSource();
-    const label = source === "all" ? "All compared documents" : displaySourceName(source);
-    note.textContent = `Exports use the selected Display / Export view: ${label}.`;
+  function displaySrcName(src) {
+    return src === "Quote / 3rd Document" ? "3rd Document" : src;
   }
 
-  function selectedSource() {
-    return elements.resultViewSelect ? elements.resultViewSelect.value : "all";
-  }
-
-  function selectedResults() {
-    const source = selectedSource();
-    return source === "all" ? state.results : state.results.filter((row) => (row.source || "Current Policy") === source);
-  }
-
-  function selectedChecklistRows() {
-    const source = selectedSource();
-    return source === "all" ? state.checklistRows : state.checklistRows.filter((row) => row.source === source);
-  }
-
-  function checklistStatus(status) {
-    return status === "Edition Changed" ? "Revised" : status;
-  }
+  /* ── CHECKLIST ────────────────────────────────────────── */
+  function checklistStatus(s) { return s === "Edition Changed" ? "Revised" : s; }
 
   function formDescription(row) {
-    const code = (row.displayCode || row.normalizedCode || "").replace(/\s*\(\d{2}\/\d{2}\)\s*$/, "");
-    return [code, row.description].filter(Boolean).join(" ") || code || row.normalizedCode || "";
+    const edit = state.customEdits.get(row.normalizedCode) || {};
+    // When toggled to "previous", use originalPrevious if available
+    let rawCode;
+    if (typeof checklistView !== "undefined" && checklistView === "previous" && row.originalPrevious) {
+      rawCode = row.originalPrevious;
+    } else {
+      rawCode = edit.displayCode !== undefined ? edit.displayCode : (row.displayCode || row.normalizedCode || "");
+    }
+    const code = rawCode.replace(/\s*\(\d{2}\/\d{2}\)\s*$/, "");
+    const desc = edit.description !== undefined ? edit.description : row.description;
+    return [code, desc].filter(Boolean).join(" ") || row.normalizedCode || "";
+  }
+
+  function checklistEdition(v) {
+    let e = String(v || "").trim();
+    if (e.includes("->")) e = e.split("->").pop().trim();
+    if (!e) return "";
+    return e.startsWith("(") ? e : `(${e})`;
   }
 
   function makeChecklistRows(results) {
     return results
-      .filter((row) => row.status !== "Unknown Format")
-      .map((row) => ({
-        formDescription: formDescription(row),
-        edition: checklistEdition(row.edition),
-        status: checklistStatus(row.status),
-        source: row.source || "Current Policy",
+      .filter(r => r.status !== "Unknown Format")
+      .map(r => ({
+        formDescription: formDescription(r),
+        edition: checklistEdition(r.edition),
+        status: checklistStatus(r.status),
+        source: r.source || "Current Policy",
+        normalizedCode: r.normalizedCode,
       }));
   }
 
-  function checklistEdition(value) {
-    let edition = String(value || "").trim();
-    if (edition.includes("->")) edition = edition.split("->").pop().trim();
-    if (!edition) return "";
-    return edition.startsWith("(") ? edition : `(${edition})`;
-  }
-
   function renderChecklist() {
-    const rows = selectedChecklistRows();
-    elements.excelChecklistBody.innerHTML = rows.length
-      ? rows.map((row) => `
-          <tr class="${statusClass(row.status)}">
-            <td>${escapeHtml(row.formDescription)}</td>
-            <td>${escapeHtml(row.edition)}</td>
-            <td>${escapeHtml(row.status)}</td>
-            <td>${escapeHtml(row.source)}</td>
-          </tr>
-        `).join("")
-      : `<tr><td colspan="4">Run a comparison to generate Excel-ready rows for the selected document.</td></tr>`;
+    const src = el.resultViewSelect.value;
+    const rows = src === "all" ? state.checklistRows : state.checklistRows.filter(r => r.source === src);
+    el.excelChecklistBody.innerHTML = rows.length
+      ? rows.map(r => {
+          const cv = v => esc(v || "");
+          return `<tr class="${statusClass(r.status)}">
+            <td class="cell-copy" data-copy-val="${cv(r.formDescription)}">${cv(r.formDescription)}</td>
+            <td class="cell-copy" data-copy-val="${cv(r.edition)}">${cv(r.edition)}</td>
+            <td class="cell-copy" data-copy-val="${cv(r.status)}">${cv(r.status)}</td>
+            <td class="cell-copy" data-copy-val="${cv(r.source)}">${cv(r.source)}</td>
+          </tr>`;
+        }).join("")
+      : `<tr><td colspan="4">Run a comparison to generate Excel-ready rows.</td></tr>`;
   }
 
+  /* ── METRICS ──────────────────────────────────────────── */
   function summarize(results) {
-    return results.reduce((acc, item) => {
-      acc[item.status] = (acc[item.status] || 0) + 1;
-      return acc;
-    }, {});
+    return results.reduce((acc, r) => { acc[r.status] = (acc[r.status] || 0) + 1; return acc; }, {});
   }
 
-  function updateMetrics(summary, comparisonMeta) {
+  function updateMetrics(summary, meta) {
     const total = Math.max(1, state.results.length);
-    const known = (summary.Match || 0) + (summary.Added || 0) + (summary.Removed || 0) + (summary["Edition Changed"] || 0);
+    const known = (summary.Match||0) + (summary.Added||0) + (summary.Removed||0) + (summary["Edition Changed"]||0) + (summary["Description Changed"]||0) + (summary["Possible Typo"]||0);
     const completion = Math.round((known / total) * 100);
-    const values = {
-      Previous: comparisonMeta ? comparisonMeta.previousCount : state.previousItems.length,
-      Current: comparisonMeta ? comparisonMeta.currentCount : state.currentItems.length,
+    const vals = {
+      Previous: meta ? meta.previousCount : state.previousItems.length,
+      Current: meta ? meta.currentCount : state.currentItems.length,
       Match: summary.Match || 0,
       Added: summary.Added || 0,
       Removed: summary.Removed || 0,
       "Edition Changed": summary["Edition Changed"] || 0,
+      "Description Changed": summary["Description Changed"] || 0,
+      "Possible Typo": summary["Possible Typo"] || 0,
       "Unknown Format": summary["Unknown Format"] || 0,
       Completion: `${state.results.length ? completion : 0}%`,
     };
-
     for (const [key, id] of Object.entries(metricIds)) {
-      document.getElementById(id).textContent = values[key];
+      document.getElementById(id).textContent = vals[key];
     }
   }
 
+  /* ── PARSE HELPERS ────────────────────────────────────── */
   function cleanPrevious() {
-    state.prefixes = window.ComparatorParser.parsePrefixes(elements.prefixInput.value);
-    state.previousItems = window.ComparatorParser.parseSchedule(elements.previousInput.value, state.prefixes);
-    renderPreview(elements.previousPreview, state.previousItems);
+    state.prefixes = window.ComparatorParser.parsePrefixes(el.prefixInput.value);
+    state.previousItems = window.ComparatorParser.parseSchedule(el.previousInput.value, state.prefixes);
+    renderPreview(el.previousPreview, state.previousItems);
     updateMetrics(summarize(state.results), null);
   }
-
   function cleanCurrent() {
-    state.prefixes = window.ComparatorParser.parsePrefixes(elements.prefixInput.value);
-    state.currentItems = window.ComparatorParser.parseSchedule(elements.currentInput.value, state.prefixes);
-    renderPreview(elements.currentPreview, state.currentItems);
+    state.prefixes = window.ComparatorParser.parsePrefixes(el.prefixInput.value);
+    state.currentItems = window.ComparatorParser.parseSchedule(el.currentInput.value, state.prefixes);
+    renderPreview(el.currentPreview, state.currentItems);
     updateMetrics(summarize(state.results), null);
   }
-
   function cleanQuote() {
-    state.prefixes = window.ComparatorParser.parsePrefixes(elements.prefixInput.value);
-    state.quoteItems = window.ComparatorParser.parseSchedule(elements.quoteInput.value, state.prefixes);
-    renderPreview(elements.quotePreview, state.quoteItems);
+    state.prefixes = window.ComparatorParser.parsePrefixes(el.prefixInput.value);
+    state.quoteItems = window.ComparatorParser.parseSchedule(el.quoteInput.value, state.prefixes);
+    renderPreview(el.quotePreview, state.quoteItems);
   }
-
   function cleanFourth() {
-    state.prefixes = window.ComparatorParser.parsePrefixes(elements.prefixInput.value);
-    state.fourthItems = window.ComparatorParser.parseSchedule(elements.fourthInput.value, state.prefixes);
-    renderPreview(elements.fourthPreview, state.fourthItems);
+    state.prefixes = window.ComparatorParser.parsePrefixes(el.prefixInput.value);
+    state.fourthItems = window.ComparatorParser.parseSchedule(el.fourthInput.value, state.prefixes);
+    renderPreview(el.fourthPreview, state.fourthItems);
   }
 
-  function compareAgainstPrevious(label, items) {
-    const comparison = window.ComparatorEngine.compareSchedules(state.previousItems, items);
-    comparison.results.forEach((row) => {
-      row.source = label;
-      if (label !== "Current Policy") row.notes = `${label}: ${row.notes}`;
+  /* ── COMPARE ──────────────────────────────────────────── */
+  function compareAgainst(label, items) {
+    const cmp = window.ComparatorEngine.compareSchedules(state.previousItems, items);
+    cmp.results.forEach(r => {
+      r.source = label;
+      if (label !== "Current Policy") r.notes = `${label}: ${r.notes}`;
     });
-    return comparison;
+    return cmp;
   }
 
   function compare() {
-    const started = performance.now();
-    cleanPrevious();
-    cleanCurrent();
+    const t0 = performance.now();
+    cleanPrevious(); cleanCurrent();
     if (!document.getElementById("quotePane").classList.contains("hidden")) cleanQuote();
     if (!document.getElementById("fourthPane").classList.contains("hidden")) cleanFourth();
 
-    const comparisons = [compareAgainstPrevious("Current Policy", state.currentItems)];
-    if (state.quoteItems.length) comparisons.push(compareAgainstPrevious("Quote / 3rd Document", state.quoteItems));
-    if (state.fourthItems.length) comparisons.push(compareAgainstPrevious("4th Document", state.fourthItems));
+    const cmps = [compareAgainst("Current Policy", state.currentItems)];
+    if (state.quoteItems.length)  cmps.push(compareAgainst("Quote / 3rd Document", state.quoteItems));
+    if (state.fourthItems.length) cmps.push(compareAgainst("4th Document", state.fourthItems));
 
-    const comparison = comparisons[0];
-    state.results = comparisons.flatMap((item) => item.results);
+    state.results = cmps.flatMap(c => c.results);
     state.checklistRows = makeChecklistRows(state.results);
     const summary = summarize(state.results);
     renderResults();
     renderChecklist();
-    updateMetrics(summary, comparison);
+    updateMetrics(summary, cmps[0]);
+    updateFilterCounts();
     drawCharts(summary);
-    const seconds = ((performance.now() - started) / 1000).toFixed(2);
-    elements.comparisonTime.textContent = `${seconds} sec`;
-    elements.lastCompared.textContent = new Date().toLocaleString();
+    el.comparisonTime.textContent = `${((performance.now() - t0) / 1000).toFixed(2)} sec`;
+    el.lastCompared.textContent = new Date().toLocaleString();
     saveDraft();
   }
 
   function drawCharts(summary) {
     const data = [
-      ["Match", summary.Match || 0, "#15803d"],
-      ["Added", summary.Added || 0, "#a16207"],
-      ["Removed", summary.Removed || 0, "#b91c1c"],
-      ["Edition Changed", summary["Edition Changed"] || 0, "#c2410c"],
-      ["Unknown", summary["Unknown Format"] || 0, "#64748b"],
+      ["Match",               summary.Match || 0,                    "#15803d"],
+      ["Added",               summary.Added || 0,                    "#ca8a04"],
+      ["Removed",             summary.Removed || 0,                  "#dc2626"],
+      ["Edition Changed",     summary["Edition Changed"] || 0,       "#ea580c"],
+      ["Desc Changed",        summary["Description Changed"] || 0,   "#8b5cf6"],
+      ["Possible Typo",       summary["Possible Typo"] || 0,         "#d946ef"],
+      ["Unknown",             summary["Unknown Format"] || 0,        "#64748b"],
     ];
-    drawPie(elements.pieChart, data);
-    drawBars(elements.barChart, data);
+    drawPie(el.pieChart, data);
+    drawBars(el.barChart, data);
   }
 
   function drawPie(canvas, data) {
     const ctx = canvas.getContext("2d");
-    const width = canvas.width;
-    const height = canvas.height;
-    ctx.clearRect(0, 0, width, height);
-    const total = data.reduce((sum, item) => sum + item[1], 0);
-    const cx = 108;
-    const cy = 112;
-    const radius = 78;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const total = data.reduce((s, d) => s + d[1], 0);
+    const cx = 98, cy = 112, r = 74;
     let angle = -Math.PI / 2;
-
     if (!total) {
       ctx.fillStyle = "#e5e7eb";
-      ctx.beginPath();
-      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
     } else {
-      for (const [, value, color] of data) {
-        const slice = (value / total) * Math.PI * 2;
-        ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.arc(cx, cy, radius, angle, angle + slice);
-        ctx.closePath();
-        ctx.fillStyle = color;
-        ctx.fill();
-        angle += slice;
+      for (const [, v, col] of data) {
+        const slice = (v / total) * Math.PI * 2;
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, angle, angle + slice); ctx.closePath();
+        ctx.fillStyle = col; ctx.fill(); angle += slice;
       }
     }
-
-    data.forEach((item, index) => {
-      const y = 54 + index * 28;
-      ctx.fillStyle = item[2];
-      ctx.fillRect(220, y - 10, 14, 14);
-      ctx.fillStyle = "#172033";
-      ctx.font = "13px Segoe UI, Arial";
-      ctx.fillText(`${item[0]}: ${item[1]}`, 244, y + 1);
+    const isDark = document.documentElement.dataset.theme === "dark";
+    data.forEach((d, i) => {
+      const y = 32 + i * 26;
+      ctx.fillStyle = d[2]; ctx.fillRect(200, y - 10, 12, 12);
+      ctx.fillStyle = isDark ? "#e5eefb" : "#172033";
+      ctx.font = "12px Segoe UI, Arial";
+      ctx.fillText(`${d[0]}: ${d[1]}`, 220, y + 1);
     });
   }
 
   function drawBars(canvas, data) {
     const ctx = canvas.getContext("2d");
-    const width = canvas.width;
-    const height = canvas.height;
-    ctx.clearRect(0, 0, width, height);
-    const max = Math.max(1, ...data.map((item) => item[1]));
-    const left = 132;
-    const top = 28;
-    const rowHeight = 34;
-    const barMax = width - left - 64;
-
-    ctx.font = "13px Segoe UI, Arial";
-    data.forEach((item, index) => {
-      const y = top + index * rowHeight;
-      const barWidth = (item[1] / max) * barMax;
-      ctx.fillStyle = "#334155";
-      ctx.fillText(item[0], 12, y + 18);
-      ctx.fillStyle = "#e2e8f0";
-      ctx.fillRect(left, y, barMax, 18);
-      ctx.fillStyle = item[2];
-      ctx.fillRect(left, y, barWidth, 18);
-      ctx.fillStyle = "#172033";
-      ctx.fillText(String(item[1]), left + barMax + 14, y + 15);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const max = Math.max(1, ...data.map(d => d[1]));
+    const left = 132, top = 16, rh = 28, barMax = canvas.width - left - 64;
+    const isDark = document.documentElement.dataset.theme === "dark";
+    ctx.font = "12px Segoe UI, Arial";
+    data.forEach((d, i) => {
+      const y = top + i * rh;
+      ctx.fillStyle = isDark ? "#a8b3c7" : "#334155"; ctx.fillText(d[0], 12, y + 14);
+      ctx.fillStyle = isDark ? "#273142" : "#e2e8f0"; ctx.fillRect(left, y, barMax, 14);
+      ctx.fillStyle = d[2]; ctx.fillRect(left, y, (d[1] / max) * barMax, 14);
+      ctx.fillStyle = isDark ? "#e5eefb" : "#172033"; ctx.fillText(String(d[1]), left + barMax + 14, y + 12);
     });
   }
 
-  function toCsv(rows) {
-    const headers = ["Source", "Status", "Normalized Code", "Original Previous", "Original Current", "Description", "Edition", "Notes"];
-    const body = rows.map((row) => [
-      row.source || "Current Policy",
-      row.status,
-      row.displayCode || row.normalizedCode,
-      row.originalPrevious,
-      row.originalCurrent,
-      row.description,
-      row.edition,
-      row.notes,
-    ]);
-    return [headers, ...body]
-      .map((line) => line.map((cell) => `"${String(cell || "").replace(/"/g, '""')}"`).join(","))
-      .join("\n");
-  }
-
-  function checklistTsv() {
-    const headers = ["Form / Description", "Edition", "Status", "Compared Document"];
-    const body = selectedChecklistRows().map((row) => [row.formDescription, row.edition, row.status, row.source]);
-    return [headers, ...body]
-      .map((line) => line.map((cell) => String(cell || "").replace(/\t/g, " ").replace(/\r?\n/g, " ")).join("\t"))
-      .join("\n");
-  }
-
-  function excelHtml() {
-    const resultRows = selectedResults();
-    const checklistRows = selectedChecklistRows();
-    const label = selectedSource() === "all" ? "All compared documents" : displaySourceName(selectedSource());
-    const table = (headers, rows) => `
-      <table border="1">
-        <thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead>
-        <tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("")}</tbody>
-      </table>`;
-    const resultTable = table(
-      ["Source", "Status", "Code", "Original Previous", "Original Compared", "Description", "Edition", "Notes"],
-      resultRows.map((row) => [
-        row.source || "Current Policy",
-        row.status,
-        row.displayCode || row.normalizedCode,
-        row.originalPrevious,
-        row.originalCurrent,
-        row.description,
-        row.edition,
-        row.notes,
-      ])
-    );
-    const checklistTable = table(
-      ["Form / Description", "Edition", "Status", "Compared Document"],
-      checklistRows.map((row) => [row.formDescription, row.edition, row.status, row.source])
-    );
-    return `<!doctype html><html><head><meta charset="utf-8"></head><body><h1>Comparison Results - ${escapeHtml(label)}</h1>${resultTable}<h1>Excel Paste Checklist - ${escapeHtml(label)}</h1>${checklistTable}</body></html>`;
-  }
-
-  async function copyChecklist() {
-    const text = checklistTsv();
+  /* ── CLIPBOARD / DOWNLOAD ─────────────────────────────── */
+  async function copyText(text) {
     if (navigator.clipboard && window.isSecureContext) {
       await navigator.clipboard.writeText(text);
     } else {
-      const helper = document.createElement("textarea");
-      helper.value = text;
-      document.body.appendChild(helper);
-      helper.select();
-      document.execCommand("copy");
-      helper.remove();
+      const ta = document.createElement("textarea");
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      document.execCommand("copy"); ta.remove();
     }
-    document.getElementById("copyExcelBtn").textContent = "Copied";
+  }
+
+  function downloadFile(name, content, mime) {
+    const url = URL.createObjectURL(new Blob([content], { type: mime }));
+    const a = document.createElement("a"); a.href = url; a.download = name;
+    a.click(); URL.revokeObjectURL(url);
+  }
+
+  async function copyFormNumbers() {
+    const text = getFiltered().map(r => r.displayCode || r.normalizedCode).filter(Boolean).join("\n");
+    await copyText(text);
+    flashBtn("copyFormNumbersBtn", "✓ Copied!", "📋 Copy Numbers");
+  }
+
+  async function copyDescriptions() {
+    const text = getFiltered().map(r => {
+      const code = r.displayCode || r.normalizedCode;
+      return [code, r.description].filter(Boolean).join(" — ");
+    }).filter(Boolean).join("\n");
+    await copyText(text);
+    flashBtn("copyDescriptionsBtn", "✓ Copied!", "📋 Descriptions");
+  }
+
+  async function copyEntireTable() {
+    const rows = getFiltered();
+    const hdrs = ["Status","Code","Original Previous","Original Current","Description","Edition","Source"];
+    const body = rows.map(r => [r.status, r.displayCode||r.normalizedCode, r.originalPrevious, r.originalCurrent, r.description, r.edition, r.source||"Current Policy"]);
+    const tsv = [hdrs,...body].map(row => row.map(c => String(c||"").replace(/\t/g," ").replace(/\n/g," ")).join("\t")).join("\n");
+    await copyText(tsv);
+    flashBtn("copyTableBtn", "✓ Copied!", "📋 Copy Table");
+  }
+
+  async function copyChecklist() {
+    const src = el.resultViewSelect.value;
+    const rows = src === "all" ? state.checklistRows : state.checklistRows.filter(r => r.source === src);
+    const hdrs = ["Form / Description","Edition","Status","Compared Document"];
+    const body = rows.map(r => [r.formDescription, r.edition, r.status, r.source]);
+    const tsv = [hdrs,...body].map(row => row.map(c => String(c||"").replace(/\t/g," ").replace(/\n/g," ")).join("\t")).join("\n");
+    await copyText(tsv);
+    flashBtn("copyExcelBtn","Copied!","Copy for Excel");
+  }
+
+  function flashHeader(el, done, orig) {
+    el.textContent = done;
+    el.classList.add("header-copied");
     window.setTimeout(() => {
-      document.getElementById("copyExcelBtn").textContent = "Copy for Excel";
-    }, 1400);
+      el.textContent = orig;
+      el.classList.remove("header-copied");
+    }, 1200);
   }
 
-  function downloadFile(fileName, content, mimeType) {
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = fileName;
-    link.click();
-    URL.revokeObjectURL(url);
+  async function copyColumnCode() {
+    const rows = getFiltered();
+    const codes = rows.map(r => {
+      const edit = state.customEdits.get(r.normalizedCode) || {};
+      return edit.displayCode !== undefined ? edit.displayCode : (r.displayCode || r.normalizedCode);
+    }).filter(Boolean);
+    if (!codes.length) return;
+    await copyText(codes.join("\n"));
+    flashHeader(document.getElementById("hdrCopyCode"), "Copied! ✔", "Code 📋");
   }
 
+  async function copyColumnDesc() {
+    const rows = getFiltered();
+    const descs = rows.map(r => {
+      const edit = state.customEdits.get(r.normalizedCode) || {};
+      return edit.description !== undefined ? edit.description : r.description;
+    }).filter(Boolean);
+    if (!descs.length) return;
+    await copyText(descs.join("\n"));
+    flashHeader(document.getElementById("hdrCopyDesc"), "Copied! ✔", "Description 📋");
+  }
+
+  async function copyColumnEdit() {
+    const rows = getFiltered();
+    const editions = rows.map(r => r.edition).filter(Boolean);
+    if (!editions.length) return;
+    await copyText(editions.join("\n"));
+    flashHeader(document.getElementById("hdrCopyEdit"), "Copied! ✔", "Edition 📋");
+  }
+
+  /* ── SBS COLUMN COPY ──────────────────────────────────── */
+  async function copySbsPrev() {
+    const rows = getFiltered();
+    const vals = rows.map(r => r.status === "Added" ? "" : (r.originalPrevious || r.displayCode || r.normalizedCode || "")).filter(Boolean);
+    if (!vals.length) return;
+    await copyText(vals.join("\n"));
+    flashHeader(document.getElementById("hdrSbsPrev"), "Copied! \u2714", "Previous Form \ud83d\udccb");
+  }
+
+  async function copySbsCurr() {
+    const rows = getFiltered();
+    const vals = rows.map(r => r.status === "Removed" ? "" : (r.originalCurrent || r.displayCode || r.normalizedCode || "")).filter(Boolean);
+    if (!vals.length) return;
+    await copyText(vals.join("\n"));
+    flashHeader(document.getElementById("hdrSbsCurr"), "Copied! \u2714", "Current Form \ud83d\udccb");
+  }
+
+  /* ── CHECKLIST TOGGLE STATE ───────────────────────────── */
+  let checklistView = "current";
+
+  function getChecklistRows() {
+    const src = el.resultViewSelect.value;
+    return src === "all" ? state.checklistRows : state.checklistRows.filter(r => r.source === src);
+  }
+
+  /* ── CHECKLIST COLUMN COPY ────────────────────────────── */
+  async function copyClForm() {
+    const vals = getChecklistRows().map(r => r.formDescription).filter(Boolean);
+    if (!vals.length) return;
+    await copyText(vals.join("\n"));
+    flashHeader(document.getElementById("hdrClForm"), "Copied! \u2714", "Form / Description \ud83d\udccb");
+  }
+
+  async function copyClEdition() {
+    const vals = getChecklistRows().map(r => r.edition).filter(Boolean);
+    if (!vals.length) return;
+    await copyText(vals.join("\n"));
+    flashHeader(document.getElementById("hdrClEdition"), "Copied! \u2714", "Edition \ud83d\udccb");
+  }
+
+  async function copyClStatus() {
+    const vals = getChecklistRows().map(r => r.status).filter(Boolean);
+    if (!vals.length) return;
+    await copyText(vals.join("\n"));
+    flashHeader(document.getElementById("hdrClStatus"), "Copied! \u2714", "Status \ud83d\udccb");
+  }
+
+  async function copyClSource() {
+    const vals = getChecklistRows().map(r => r.source).filter(Boolean);
+    if (!vals.length) return;
+    await copyText(vals.join("\n"));
+    flashHeader(document.getElementById("hdrClSource"), "Copied! \u2714", "Compared Document \ud83d\udccb");
+  }
+
+  /* ── CELL CLICK COPY ──────────────────────────────────── */
+  function flashCell(td, origText) {
+    td.classList.add("cell-flashed");
+    const saved = td.textContent;
+    td.textContent = "\u2714 Copied";
+    window.setTimeout(() => { td.textContent = origText; td.classList.remove("cell-flashed"); }, 900);
+  }
+
+  async function handleCellCopy(e) {
+    const td = e.target.closest("td.cell-copy");
+    if (!td) return;
+    const text = td.dataset.copyVal !== undefined ? td.dataset.copyVal : td.textContent.trim();
+    if (!text) return;
+    await copyText(text);
+    flashCell(td, td.textContent.trim());
+  }
+
+  /* ── CHECKLIST VIEW TOGGLE ────────────────────────────── */
+  function setChecklistView(view) {
+    checklistView = view;
+    document.getElementById("clToggleCurrent").classList.toggle("active", view === "current");
+    document.getElementById("clTogglePrevious").classList.toggle("active", view === "previous");
+    state.checklistRows = makeChecklistRows(state.results);
+    renderChecklist();
+  }
+
+  function toCsv(rows, opts = {}) {
+    const hdrs = ["Status","Code","Original Previous","Original Current"];
+    if (opts.desc !== false) hdrs.push("Description");
+    if (opts.source) hdrs.push("Source");
+    if (opts.notes) hdrs.push("User Note");
+    hdrs.push("Edition","System Note");
+    const body = rows.map(r => {
+      const cells = [r.status, r.displayCode||r.normalizedCode, r.originalPrevious, r.originalCurrent];
+      if (opts.desc !== false) cells.push(r.description);
+      if (opts.source) cells.push(r.source||"Current Policy");
+      if (opts.notes) cells.push(state.rowNotes.get(r.normalizedCode)||"");
+      cells.push(r.edition, r.notes);
+      return cells;
+    });
+    return [hdrs,...body].map(row => row.map(c => `"${String(c||"").replace(/"/g,'""')}"`).join(",")).join("\n");
+  }
+
+  function toExcelHtml(rows, opts = {}) {
+    const src = el.resultViewSelect.value;
+    const label = src === "all" ? "All compared documents" : displaySrcName(src);
+    const hdrs = ["Status","Code","Original Previous","Original Current"];
+    if (opts.desc !== false) hdrs.push("Description");
+    if (opts.source) hdrs.push("Source");
+    if (opts.notes) hdrs.push("User Note");
+    hdrs.push("Edition");
+    const body = rows.map(r => {
+      const cells = [r.status, r.displayCode||r.normalizedCode, r.originalPrevious, r.originalCurrent];
+      if (opts.desc !== false) cells.push(r.description);
+      if (opts.source) cells.push(r.source||"Current Policy");
+      if (opts.notes) cells.push(state.rowNotes.get(r.normalizedCode)||"");
+      cells.push(r.edition);
+      return cells;
+    });
+    const tbl = (h,b) => `<table border="1"><thead><tr>${h.map(c=>`<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${b.map(row=>`<tr>${row.map(c=>`<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+    return `<!doctype html><html><head><meta charset="utf-8"></head><body><h1>${esc(label)}</h1>${tbl(hdrs,body)}</body></html>`;
+  }
+
+  /* ── SMART EXPORT ─────────────────────────────────────── */
+  function smartRows() {
+    let rows = baseRows();
+    if (document.getElementById("optDiffsOnly").checked || !document.getElementById("optMatches").checked) {
+      rows = rows.filter(r => r.status !== "Match");
+    }
+    return rows;
+  }
+
+  function smartOpts() {
+    return {
+      desc:   document.getElementById("optDescriptions").checked,
+      source: document.getElementById("optSource").checked,
+      notes:  document.getElementById("optUserNotes").checked,
+    };
+  }
+
+  async function smCopyExcel() {
+    const rows = smartRows(); const opts = smartOpts();
+    const hdrs = ["Status","Code"];
+    if (opts.desc) hdrs.push("Description");
+    if (opts.source) hdrs.push("Source");
+    if (opts.notes) hdrs.push("User Note");
+    hdrs.push("Edition");
+    const body = rows.map(r => {
+      const cells = [r.status, r.displayCode||r.normalizedCode];
+      if (opts.desc) cells.push(r.description);
+      if (opts.source) cells.push(r.source||"Current Policy");
+      if (opts.notes) cells.push(state.rowNotes.get(r.normalizedCode)||"");
+      cells.push(r.edition);
+      return cells;
+    });
+    const tsv = [hdrs,...body].map(row => row.map(c => String(c||"").replace(/\t/g," ").replace(/\n/g," ")).join("\t")).join("\n");
+    await copyText(tsv);
+    flashBtn("smCopyExcelBtn","✓ Copied!","📋 Copy for Excel");
+  }
+
+  async function smCopyNumbers() {
+    const text = smartRows().map(r => r.displayCode||r.normalizedCode).filter(Boolean).join("\n");
+    await copyText(text);
+    flashBtn("smCopyNumbersBtn","✓ Copied!","📋 Numbers Only");
+  }
+
+  /* ── DRAFT ────────────────────────────────────────────── */
   function draftPayload() {
     return {
       savedAt: new Date().toISOString(),
-      previousInput: elements.previousInput.value,
-      currentInput: elements.currentInput.value,
-      quoteInput: elements.quoteInput.value,
-      fourthInput: elements.fourthInput.value,
-      prefixes: elements.prefixInput.value,
-      quoteVisible: !document.getElementById("quotePane").classList.contains("hidden"),
+      previousInput: el.previousInput.value,
+      currentInput:  el.currentInput.value,
+      quoteInput:    el.quoteInput.value,
+      fourthInput:   el.fourthInput.value,
+      prefixes: el.prefixInput.value,
+      quoteVisible:  !document.getElementById("quotePane").classList.contains("hidden"),
       fourthVisible: !document.getElementById("fourthPane").classList.contains("hidden"),
-      resultView: selectedSource(),
+      resultView: el.resultViewSelect.value,
+      rowNotes: Array.from(state.rowNotes.entries()),
+      customEdits: Array.from(state.customEdits.entries()),
+      pinnedCodes: Array.from(state.pinnedCodes),
     };
   }
 
   function updateMemoryStatus(savedAt) {
-    if (!elements.memoryStatus) return;
-    elements.memoryStatus.textContent = savedAt
-      ? `Saved locally ${new Date(savedAt).toLocaleString()}.`
-      : "No saved draft yet.";
+    if (el.memoryStatus) el.memoryStatus.textContent = savedAt ? `Saved locally ${new Date(savedAt).toLocaleString()}.` : "No saved draft yet.";
   }
 
   function saveDraft() {
     try {
-      const payload = draftPayload();
-      localStorage.setItem(draftStorageKey, JSON.stringify(payload));
-      updateMemoryStatus(payload.savedAt);
-    } catch (error) {
-      if (elements.memoryStatus) elements.memoryStatus.textContent = "Draft memory is unavailable in this browser.";
+      const p = draftPayload();
+      localStorage.setItem(draftKey, JSON.stringify(p));
+      updateMemoryStatus(p.savedAt);
+    } catch (e) {
+      if (el.memoryStatus) el.memoryStatus.textContent = "Draft memory unavailable in this browser.";
     }
   }
 
   function scheduleDraftSave() {
-    window.clearTimeout(draftSaveTimer);
-    draftSaveTimer = window.setTimeout(saveDraft, 450);
+    window.clearTimeout(draftTimer);
+    draftTimer = window.setTimeout(saveDraft, 450);
   }
 
   function loadDraft() {
     try {
-      const raw = localStorage.getItem(draftStorageKey);
-      if (!raw) {
-        updateMemoryStatus(null);
-        return false;
-      }
-
-      const draft = JSON.parse(raw);
-      elements.previousInput.value = draft.previousInput || "";
-      elements.currentInput.value = draft.currentInput || "";
-      elements.quoteInput.value = draft.quoteInput || "";
-      elements.fourthInput.value = draft.fourthInput || "";
-      elements.prefixInput.value = draft.prefixes || elements.prefixInput.value;
-      if (draft.quoteVisible || draft.quoteInput) document.getElementById("quotePane").classList.remove("hidden");
-      if (draft.fourthVisible || draft.fourthInput) document.getElementById("fourthPane").classList.remove("hidden");
-      if (draft.resultView && elements.resultViewSelect.querySelector(`option[value="${draft.resultView}"]`)) {
-        elements.resultViewSelect.value = draft.resultView;
-      }
-      updateMemoryStatus(draft.savedAt);
+      const raw = localStorage.getItem(draftKey);
+      if (!raw) { updateMemoryStatus(null); return false; }
+      const d = JSON.parse(raw);
+      el.previousInput.value = d.previousInput || "";
+      el.currentInput.value  = d.currentInput  || "";
+      el.quoteInput.value    = d.quoteInput    || "";
+      el.fourthInput.value   = d.fourthInput   || "";
+      el.prefixInput.value   = d.prefixes || el.prefixInput.value;
+      if (d.quoteVisible  || d.quoteInput)  document.getElementById("quotePane").classList.remove("hidden");
+      if (d.fourthVisible || d.fourthInput) document.getElementById("fourthPane").classList.remove("hidden");
+      const opt = el.resultViewSelect.querySelector(`option[value="${d.resultView}"]`);
+      if (d.resultView && opt) el.resultViewSelect.value = d.resultView;
+      if (d.rowNotes)    state.rowNotes    = new Map(d.rowNotes);
+      if (d.customEdits) state.customEdits = new Map(d.customEdits);
+      if (d.pinnedCodes) state.pinnedCodes = new Set(d.pinnedCodes);
+      updateMemoryStatus(d.savedAt);
       return true;
-    } catch (error) {
-      updateMemoryStatus(null);
-      return false;
-    }
+    } catch (e) { updateMemoryStatus(null); return false; }
   }
 
   function clearSavedDraft() {
-    try {
-      localStorage.removeItem(draftStorageKey);
-    } catch (error) {
-      // Current page data remains available even if browser storage fails.
-    }
+    try { localStorage.removeItem(draftKey); } catch (e) { }
     updateMemoryStatus(null);
   }
 
+  /* ── UNDO ─────────────────────────────────────────────── */
+  function pushUndo() {
+    state.undoSnapshot = {
+      previousInput: el.previousInput.value,
+      currentInput:  el.currentInput.value,
+      quoteInput:    el.quoteInput.value,
+      fourthInput:   el.fourthInput.value,
+      results: [...state.results],
+      checklistRows: [...state.checklistRows],
+      previousItems: [...state.previousItems],
+      currentItems:  [...state.currentItems],
+    };
+  }
+
+  function showUndo() {
+    el.undoToast.classList.add("show");
+    window.setTimeout(() => el.undoToast.classList.remove("show"), 7000);
+  }
+
+  function undoClear() {
+    if (!state.undoSnapshot) return;
+    const s = state.undoSnapshot;
+    el.previousInput.value = s.previousInput;
+    el.currentInput.value  = s.currentInput;
+    el.quoteInput.value    = s.quoteInput;
+    el.fourthInput.value   = s.fourthInput;
+    state.results       = s.results;
+    state.checklistRows = s.checklistRows;
+    state.previousItems = s.previousItems;
+    state.currentItems  = s.currentItems;
+    state.undoSnapshot  = null;
+    renderPreview(el.previousPreview, state.previousItems);
+    renderPreview(el.currentPreview,  state.currentItems);
+    renderResults(); renderChecklist();
+    updateMetrics(summarize(state.results), null);
+    drawCharts(summarize(state.results));
+    updateFilterCounts();
+    el.undoToast.classList.remove("show");
+  }
+
+  /* ── CLEAR ALL ────────────────────────────────────────── */
+  function clearAll() {
+    pushUndo();
+    el.previousInput.value = ""; el.currentInput.value = ""; el.quoteInput.value = ""; el.fourthInput.value = "";
+    state.previousItems = []; state.currentItems = []; state.quoteItems = []; state.fourthItems = [];
+    state.results = []; state.checklistRows = [];
+    renderPreview(el.previousPreview, []); renderPreview(el.currentPreview, []);
+    renderPreview(el.quotePreview, []);    renderPreview(el.fourthPreview, []);
+    renderResults(); renderChecklist();
+    updateMetrics({}, null); updateFilterCounts(); drawCharts({});
+    el.lastCompared.textContent = "Not compared";
+    el.comparisonTime.textContent = "0.00 sec";
+    showUndo();
+  }
+
+  /* ── PLAY INLINE ──────────────────────────────────────── */
+  function togglePin(code) {
+    if (state.pinnedCodes.has(code)) state.pinnedCodes.delete(code);
+    else state.pinnedCodes.add(code);
+    renderResults(); scheduleDraftSave();
+  }
+
+  /* ── NOTES ────────────────────────────────────────────── */
+  function openNote(code) {
+    noteTarget = code;
+    el.noteCodeBadge.textContent = code;
+    el.noteTextarea.value = state.rowNotes.get(code) || "";
+    el.noteDialog.showModal();
+    window.setTimeout(() => el.noteTextarea.focus(), 60);
+  }
+
+  function saveNote() {
+    if (!noteTarget) return;
+    const v = el.noteTextarea.value.trim();
+    if (v) state.rowNotes.set(noteTarget, v);
+    else   state.rowNotes.delete(noteTarget);
+    el.noteDialog.close(); noteTarget = null;
+    renderResults(); scheduleDraftSave();
+  }
+
+  /* ── EDITABLE CELLS ───────────────────────────────────── */
+  el.resultsBody.addEventListener("focus", e => {
+    const ce = e.target.closest("[contenteditable]");
+    if (!ce) return;
+    ce.textContent = ce.textContent;
+  }, true);
+
+  el.resultsBody.addEventListener("blur", e => {
+    const ce = e.target.closest("[contenteditable]");
+    if (!ce) return;
+    const code  = ce.dataset.code;
+    const field = ce.dataset.field;
+    if (!code || !field) return;
+    const value = ce.textContent.trim();
+    const orig  = state.results.find(r => r.normalizedCode === code);
+    const existing = state.customEdits.get(code) || {};
+    if (field === "displayCode") {
+      const origVal = orig ? (orig.displayCode || orig.normalizedCode) : "";
+      if (value !== origVal) existing.displayCode = value;
+      else delete existing.displayCode;
+    } else if (field === "description") {
+      const origVal = orig ? orig.description : "";
+      if (value !== origVal) existing.description = value;
+      else delete existing.description;
+    }
+    if (Object.keys(existing).length) state.customEdits.set(code, existing);
+    else state.customEdits.delete(code);
+    scheduleDraftSave();
+  }, true);
+
+  el.resultsBody.addEventListener("keydown", e => {
+    if (e.target.closest("[contenteditable]")) {
+      if (e.key === "Enter") { e.preventDefault(); e.target.blur(); }
+      if (e.key === "Escape") { e.target.blur(); }
+    }
+  });
+
+  /* ── FILTER CHIPS ─────────────────────────────────────── */
+  const chipMap = {
+    chipMatch: "Match",
+    chipAdded: "Added",
+    chipRemoved: "Removed",
+    chipChanged: "Edition Changed",
+    chipDescChanged: "Description Changed",
+    chipTypo: "Possible Typo",
+    chipUnknown: "Unknown Format"
+  };
+  for (const [id, status] of Object.entries(chipMap)) {
+    document.getElementById(id).addEventListener("click", () => {
+      state.filters[status] = !state.filters[status];
+      document.getElementById(id).classList.toggle("off", !state.filters[status]);
+      renderResults();
+    });
+  }
+
+  /* ── THEME ────────────────────────────────────────────── */
   function applyTheme(theme) {
     document.documentElement.dataset.theme = theme;
-    elements.themeToggleBtn.textContent = theme === "dark" ? "Light Mode" : "Dark Mode";
+    el.themeToggleBtn.textContent = theme === "dark" ? "Light Mode" : "Dark Mode";
   }
 
   function toggleTheme() {
-    const nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
-    applyTheme(nextTheme);
-    drawCharts(summarize(state.results));
-    try {
-      localStorage.setItem("formsComparatorTheme", nextTheme);
-    } catch (error) {
-      // Theme preference only; policy data is never stored.
+    const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    applyTheme(next); drawCharts(summarize(state.results));
+    try { localStorage.setItem("formsComparatorTheme", next); } catch (e) { }
+  }
+
+  /* ── KEYBOARD SHORTCUTS ───────────────────────────────── */
+  document.addEventListener("keydown", e => {
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key === "1") { e.preventDefault(); compare(); }
+      else if (e.key === "2") { e.preventDefault(); el.smartExportModal.showModal(); }
+      else if (e.key === "f" || e.key === "F") { e.preventDefault(); el.resultsSearch.focus(); el.resultsSearch.select(); }
+      else if ((e.key === "z" || e.key === "Z") && state.undoSnapshot) { e.preventDefault(); undoClear(); }
     }
-  }
+  });
 
-  function clearAll() {
-    elements.previousInput.value = "";
-    elements.currentInput.value = "";
-    elements.quoteInput.value = "";
-    elements.fourthInput.value = "";
-    state.previousItems = [];
-    state.currentItems = [];
-    state.quoteItems = [];
-    state.fourthItems = [];
-    state.results = [];
-    state.checklistRows = [];
-    renderPreview(elements.previousPreview, []);
-    renderPreview(elements.currentPreview, []);
-    renderPreview(elements.quotePreview, []);
-    renderPreview(elements.fourthPreview, []);
-    renderResults();
-    renderChecklist();
-    updateMetrics({}, null);
-    drawCharts({});
-    elements.lastCompared.textContent = "Not compared";
-    elements.comparisonTime.textContent = "0.00 sec";
-  }
-
+  /* ── EVENT LISTENERS ──────────────────────────────────── */
   document.getElementById("cleanPreviousBtn").addEventListener("click", cleanPrevious);
   document.getElementById("cleanCurrentBtn").addEventListener("click", cleanCurrent);
   document.getElementById("cleanQuoteBtn").addEventListener("click", cleanQuote);
   document.getElementById("cleanFourthBtn").addEventListener("click", cleanFourth);
   document.getElementById("compareBtn").addEventListener("click", compare);
-  document.getElementById("applySettingsBtn").addEventListener("click", () => {
-    state.prefixes = window.ComparatorParser.parsePrefixes(elements.prefixInput.value);
-    cleanPrevious();
-    cleanCurrent();
-    cleanQuote();
-    cleanFourth();
+  document.getElementById("compareBtnWorkspace").addEventListener("click", compare);
+  document.getElementById("toggleSidebarBtn").addEventListener("click", () => {
+    document.querySelector(".app-shell").classList.toggle("sidebar-collapsed");
   });
+  document.getElementById("hdrCopyCode").addEventListener("click", copyColumnCode);
+  document.getElementById("hdrCopyDesc").addEventListener("click", copyColumnDesc);
+  document.getElementById("hdrCopyEdit").addEventListener("click", copyColumnEdit);
+
+  document.getElementById("applySettingsBtn").addEventListener("click", () => {
+    state.prefixes = window.ComparatorParser.parsePrefixes(el.prefixInput.value);
+    cleanPrevious(); cleanCurrent(); cleanQuote(); cleanFourth();
+  });
+
   document.getElementById("loadSamplesBtn").addEventListener("click", () => {
-    elements.previousInput.value = samples.previous;
-    elements.currentInput.value = samples.current;
-    elements.quoteInput.value = samples.quote;
+    el.previousInput.value = samples.previous;
+    el.currentInput.value  = samples.current;
+    el.quoteInput.value    = samples.quote;
     document.getElementById("quotePane").classList.remove("hidden");
     compare();
   });
+
   document.getElementById("showQuoteBtn").addEventListener("click", () => {
-    document.getElementById("quotePane").classList.remove("hidden", "collapsed-doc");
+    document.getElementById("quotePane").classList.remove("hidden","collapsed-doc");
     document.getElementById("collapseQuoteBtn").textContent = "Minimize";
-    elements.quoteInput.focus();
-    scheduleDraftSave();
+    el.quoteInput.focus(); scheduleDraftSave();
   });
+
   document.getElementById("showFourthBtn").addEventListener("click", () => {
-    document.getElementById("fourthPane").classList.remove("hidden", "collapsed-doc");
+    document.getElementById("fourthPane").classList.remove("hidden","collapsed-doc");
     document.getElementById("collapseFourthBtn").textContent = "Minimize";
-    elements.fourthInput.focus();
-    scheduleDraftSave();
+    el.fourthInput.focus(); scheduleDraftSave();
   });
+
   document.getElementById("collapseQuoteBtn").addEventListener("click", () => {
-    const pane = document.getElementById("quotePane");
-    pane.classList.toggle("collapsed-doc");
-    document.getElementById("collapseQuoteBtn").textContent = pane.classList.contains("collapsed-doc") ? "Expand" : "Minimize";
+    const p = document.getElementById("quotePane"); p.classList.toggle("collapsed-doc");
+    document.getElementById("collapseQuoteBtn").textContent = p.classList.contains("collapsed-doc") ? "Expand" : "Minimize";
   });
+
   document.getElementById("collapseFourthBtn").addEventListener("click", () => {
-    const pane = document.getElementById("fourthPane");
-    pane.classList.toggle("collapsed-doc");
-    document.getElementById("collapseFourthBtn").textContent = pane.classList.contains("collapsed-doc") ? "Expand" : "Minimize";
+    const p = document.getElementById("fourthPane"); p.classList.toggle("collapsed-doc");
+    document.getElementById("collapseFourthBtn").textContent = p.classList.contains("collapsed-doc") ? "Expand" : "Minimize";
   });
+
   document.getElementById("removeQuoteBtn").addEventListener("click", () => {
-    elements.quoteInput.value = "";
-    state.quoteItems = [];
+    el.quoteInput.value = ""; state.quoteItems = [];
     document.getElementById("quotePane").classList.add("hidden");
-    if (selectedSource() === "Quote / 3rd Document") elements.resultViewSelect.value = "all";
-    renderPreview(elements.quotePreview, []);
-    compare();
+    if (el.resultViewSelect.value === "Quote / 3rd Document") el.resultViewSelect.value = "all";
+    renderPreview(el.quotePreview, []); compare();
   });
+
   document.getElementById("removeFourthBtn").addEventListener("click", () => {
-    elements.fourthInput.value = "";
-    state.fourthItems = [];
+    el.fourthInput.value = ""; state.fourthItems = [];
     document.getElementById("fourthPane").classList.add("hidden");
-    if (selectedSource() === "4th Document") elements.resultViewSelect.value = "all";
-    renderPreview(elements.fourthPreview, []);
-    compare();
+    if (el.resultViewSelect.value === "4th Document") el.resultViewSelect.value = "all";
+    renderPreview(el.fourthPreview, []); compare();
   });
+
   document.getElementById("resultViewSelect").addEventListener("change", () => {
-    renderResults();
-    renderChecklist();
+    renderResults(); renderChecklist(); updateFilterCounts();
   });
-  elements.resultsBody.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-result-group]");
-    if (!button) return;
-    const source = button.getAttribute("data-result-group");
-    if (state.collapsedResultGroups.has(source)) {
-      state.collapsedResultGroups.delete(source);
-    } else {
-      state.collapsedResultGroups.add(source);
+
+  // Results body delegation: group collapse, pin, note
+  el.resultsBody.addEventListener("click", e => {
+    const gb = e.target.closest("[data-group]");
+    if (gb) {
+      const src = gb.getAttribute("data-group");
+      if (state.collapsedGroups.has(src)) state.collapsedGroups.delete(src); else state.collapsedGroups.add(src);
+      renderResults(); return;
     }
+    const pb = e.target.closest("[data-pin]");
+    if (pb) { togglePin(pb.getAttribute("data-pin")); return; }
+    const nb = e.target.closest("[data-note]");
+    if (nb) { openNote(nb.getAttribute("data-note")); return; }
+  });
+
+  // SBS body delegation
+  el.sbsBody.addEventListener("click", e => {
+    const pb = e.target.closest("[data-pin]");  if (pb) { togglePin(pb.getAttribute("data-pin")); return; }
+    const nb = e.target.closest("[data-note]"); if (nb) { openNote(nb.getAttribute("data-note")); return; }
+  });
+
+  // Search
+  el.resultsSearch.addEventListener("input", e => { state.searchQuery = e.target.value; renderResults(); });
+
+  // Diffs Only toggle
+  document.getElementById("diffsOnlyBtn").addEventListener("click", () => {
+    state.diffsOnly = !state.diffsOnly;
+    const btn = document.getElementById("diffsOnlyBtn");
+    btn.classList.toggle("toggle-on", state.diffsOnly);
+    btn.textContent = state.diffsOnly ? "✓ Diffs Only" : "Diffs Only";
     renderResults();
   });
+
+  // Side-by-Side toggle
+  document.getElementById("sideBySideBtn").addEventListener("click", () => {
+    state.sideBySide = !state.sideBySide;
+    const btn = document.getElementById("sideBySideBtn");
+    btn.classList.toggle("toggle-on", state.sideBySide);
+    btn.textContent = state.sideBySide ? "✓ Side by Side" : "Side by Side";
+    renderResults();
+  });
+
+  // Clear
   document.getElementById("clearBtn").addEventListener("click", clearAll);
+  document.getElementById("clearBtnWorkspace").addEventListener("click", clearAll);
+
+  // Draft
   document.getElementById("saveDraftBtn").addEventListener("click", saveDraft);
   document.getElementById("clearDraftBtn").addEventListener("click", clearSavedDraft);
+
+  // Theme
   document.getElementById("themeToggleBtn").addEventListener("click", toggleTheme);
+
+  // Export buttons
   document.getElementById("exportCsvBtn").addEventListener("click", () => {
-    downloadFile("insurance-forms-comparison.csv", toCsv(selectedResults()), "text/csv;charset=utf-8");
+    downloadFile("insurance-forms-comparison.csv", toCsv(baseRows()), "text/csv;charset=utf-8");
   });
   document.getElementById("exportExcelBtn").addEventListener("click", () => {
-    downloadFile("insurance-forms-comparison.xls", excelHtml(), "application/vnd.ms-excel;charset=utf-8");
+    downloadFile("insurance-forms-comparison.xls", toExcelHtml(baseRows()), "application/vnd.ms-excel;charset=utf-8");
   });
   document.getElementById("exportJsonBtn").addEventListener("click", () => {
-    downloadFile("insurance-forms-comparison.json", JSON.stringify(selectedResults(), null, 2), "application/json;charset=utf-8");
+    downloadFile("insurance-forms-comparison.json", JSON.stringify(baseRows(), null, 2), "application/json;charset=utf-8");
   });
+
+  // New copy buttons
+  document.getElementById("copyFormNumbersBtn").addEventListener("click", copyFormNumbers);
+  document.getElementById("copyDescriptionsBtn").addEventListener("click", copyDescriptions);
+  document.getElementById("copyTableBtn").addEventListener("click", copyEntireTable);
+
+  // Smart Export modal
+  document.getElementById("smartExportBtn").addEventListener("click", () => el.smartExportModal.showModal());
+  document.getElementById("closeSmartExportBtn").addEventListener("click", () => el.smartExportModal.close());
+  document.getElementById("smCopyExcelBtn").addEventListener("click", smCopyExcel);
+  document.getElementById("smCopyNumbersBtn").addEventListener("click", smCopyNumbers);
+  document.getElementById("smDownloadCsvBtn").addEventListener("click", () => {
+    downloadFile("smart-export.csv", toCsv(smartRows(), smartOpts()), "text/csv;charset=utf-8");
+  });
+  document.getElementById("smDownloadExcelBtn").addEventListener("click", () => {
+    downloadFile("smart-export.xls", toExcelHtml(smartRows(), smartOpts()), "application/vnd.ms-excel;charset=utf-8");
+  });
+
+  // Note dialog
+  document.getElementById("saveNoteBtn").addEventListener("click", saveNote);
+  document.getElementById("clearNoteBtn").addEventListener("click", () => { el.noteTextarea.value = ""; });
+  document.getElementById("closeNoteBtn").addEventListener("click", () => { el.noteDialog.close(); noteTarget = null; });
+  el.noteTextarea.addEventListener("keydown", e => { if (e.key === "Enter" && e.ctrlKey) { e.preventDefault(); saveNote(); } });
+
+  // Undo
+  document.getElementById("undoBtn").addEventListener("click", undoClear);
+
+  // Checklist
   document.getElementById("copyExcelBtn").addEventListener("click", copyChecklist);
   document.getElementById("downloadTsvBtn").addEventListener("click", () => {
-    downloadFile("insurance-forms-checklist.tsv", checklistTsv(), "text/tab-separated-values;charset=utf-8");
+    const src = el.resultViewSelect.value;
+    const rows = src === "all" ? state.checklistRows : state.checklistRows.filter(r => r.source === src);
+    const hdrs = ["Form / Description","Edition","Status","Compared Document"];
+    const body = rows.map(r => [r.formDescription,r.edition,r.status,r.source]);
+    const tsv = [hdrs,...body].map(row => row.map(c => String(c||"").replace(/\t/g," ").replace(/\n/g," ")).join("\t")).join("\n");
+    downloadFile("insurance-forms-checklist.tsv", tsv, "text/tab-separated-values;charset=utf-8");
   });
+
+  // SBS column copy headers
+  document.getElementById("hdrSbsPrev").addEventListener("click", copySbsPrev);
+  document.getElementById("hdrSbsCurr").addEventListener("click", copySbsCurr);
+
+  // Checklist column copy headers
+  document.getElementById("hdrClForm").addEventListener("click", copyClForm);
+  document.getElementById("hdrClEdition").addEventListener("click", copyClEdition);
+  document.getElementById("hdrClStatus").addEventListener("click", copyClStatus);
+  document.getElementById("hdrClSource").addEventListener("click", copyClSource);
+
+  // Checklist Current / Previous toggle
+  document.getElementById("clToggleCurrent").addEventListener("click", () => setChecklistView("current"));
+  document.getElementById("clTogglePrevious").addEventListener("click", () => setChecklistView("previous"));
+
+  // Checklist cell-click copy (delegated)
+  el.excelChecklistBody.addEventListener("click", handleCellCopy);
+
+
+
+  // Dialog click-outside-to-close
+  [el.smartExportModal, el.noteDialog].forEach(dlg => {
+    dlg.addEventListener("click", e => { if (e.target === dlg) dlg.close(); });
+  });
+
+  // Service Worker (optional, only in live hosted version)
   if ("serviceWorker" in navigator && !document.documentElement.dataset.offlineCopy) {
-    navigator.serviceWorker.register("./service-worker.js").then((registration) => {
-      registration.update();
-      if (elements.offlineStatus) elements.offlineStatus.textContent = "Offline cache is active. The standalone download is also available.";
+    navigator.serviceWorker.register("./service-worker.js").then(reg => {
+      reg.update();
+      if (el.offlineStatus) el.offlineStatus.textContent = "Offline cache is active. The standalone download is also available.";
     }).catch(() => {
-      if (elements.offlineStatus) elements.offlineStatus.textContent = "Standalone offline download is available.";
+      if (el.offlineStatus) el.offlineStatus.textContent = "Standalone offline download is available.";
     });
   }
 
-  try {
-    applyTheme(localStorage.getItem("formsComparatorTheme") || "light");
-  } catch (error) {
-    applyTheme("light");
-  }
-  const hadDraft = loadDraft();
-  [elements.previousInput, elements.currentInput, elements.quoteInput, elements.fourthInput, elements.prefixInput].forEach((field) => {
-    field.addEventListener("input", scheduleDraftSave);
+  // Input auto-save draft & auto-compare (600ms debounce)
+  let autoCompareTimer = null;
+  [el.previousInput, el.currentInput, el.quoteInput, el.fourthInput, el.prefixInput].forEach(f => {
+    f.addEventListener("input", () => {
+      scheduleDraftSave();
+      window.clearTimeout(autoCompareTimer);
+      autoCompareTimer = window.setTimeout(compare, 600);
+    });
   });
   window.addEventListener("beforeunload", saveDraft);
-  renderPreview(elements.previousPreview, []);
-  renderPreview(elements.currentPreview, []);
-  renderPreview(elements.quotePreview, []);
-  renderPreview(elements.fourthPreview, []);
-  renderResults();
-  renderChecklist();
-  updateMetrics({}, null);
-  drawCharts({});
-  if (hadDraft && (elements.previousInput.value || elements.currentInput.value || elements.quoteInput.value || elements.fourthInput.value)) {
+
+  /* ── INIT ─────────────────────────────────────────────── */
+  try { applyTheme(localStorage.getItem("formsComparatorTheme") || "light"); }
+  catch (e) { applyTheme("light"); }
+
+  const hadDraft = loadDraft();
+
+  renderPreview(el.previousPreview, []);
+  renderPreview(el.currentPreview,  []);
+  renderPreview(el.quotePreview,    []);
+  renderPreview(el.fourthPreview,   []);
+  renderResults(); renderChecklist();
+  updateMetrics({}, null); updateFilterCounts(); drawCharts({});
+
+  if (hadDraft && (el.previousInput.value || el.currentInput.value || el.quoteInput.value || el.fourthInput.value)) {
     compare();
   }
 })();

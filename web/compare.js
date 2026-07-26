@@ -1,4 +1,32 @@
 (function () {
+  function levenshtein(a, b) {
+    const matrix = [];
+    for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+    for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+    for (let i = 1; i <= b.length; i++) {
+      for (let j = 1; j <= a.length; j++) {
+        if (b.charAt(i - 1) === a.charAt(j - 1)) {
+          matrix[i][j] = matrix[i - 1][j - 1];
+        } else {
+          matrix[i][j] = Math.min(
+            matrix[i - 1][j - 1] + 1,
+            Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1)
+          );
+        }
+      }
+    }
+    return matrix[b.length][a.length];
+  }
+
+  function getSimilarity(a, b) {
+    const cleanA = String(a || "").trim().toUpperCase();
+    const cleanB = String(b || "").trim().toUpperCase();
+    const distance = levenshtein(cleanA, cleanB);
+    const maxLen = Math.max(cleanA.length, cleanB.length);
+    if (maxLen === 0) return 1.0;
+    return (maxLen - distance) / maxLen;
+  }
+
   function buildKnownMap(items) {
     const map = new Map();
     const unknown = [];
@@ -54,28 +82,103 @@
     const current = buildKnownMap(currentItems);
     const currentBaseLookup = buildBaseLookup(current.map);
     const previousBaseLookup = buildBaseLookup(previous.map);
-    const editionChangedCurrentCodes = new Set();
+    const matchedCurrentCodes = new Set();
+    const matchedPreviousCodes = new Set();
     const results = [];
 
+    // Pass 1: Exact matches (same code and edition)
     for (const [previousCode, previousItem] of previous.map.entries()) {
       if (current.map.has(previousCode)) {
-        results.push(makeResult("Match", previousCode, previousItem, current.map.get(previousCode), "Exact form and edition match."));
-        continue;
+        const currentItem = current.map.get(previousCode);
+        matchedCurrentCodes.add(previousCode);
+        matchedPreviousCodes.add(previousCode);
+        const sim = getSimilarity(previousItem.description, currentItem.description);
+
+        if (sim === 1.0) {
+          results.push(makeResult("Match", previousCode, previousItem, currentItem, "Exact form, edition and description match."));
+        } else if (sim >= 0.85) {
+          results.push(makeResult("Possible Typo", previousCode, previousItem, currentItem, `Possible description typo (${Math.round(sim * 100)}% similar).`));
+        } else {
+          results.push(makeResult("Description Changed", previousCode, previousItem, currentItem, `Description updated (${Math.round(sim * 100)}% similar).`));
+        }
       }
+    }
+
+    // Pass 2: BaseCode matches (Edition Changed)
+    for (const [previousCode, previousItem] of previous.map.entries()) {
+      if (matchedPreviousCodes.has(previousCode)) continue;
 
       if (currentBaseLookup.has(previousItem.baseCode)) {
         const currentCode = currentBaseLookup.get(previousItem.baseCode);
-        const currentItem = current.map.get(currentCode);
-        editionChangedCurrentCodes.add(currentCode);
-        results.push(makeResult("Edition Changed", currentItem.normalizedCode, previousItem, currentItem, "Same form number with a different edition."));
-        continue;
+        if (!matchedCurrentCodes.has(currentCode)) {
+          const currentItem = current.map.get(currentCode);
+          matchedCurrentCodes.add(currentCode);
+          matchedPreviousCodes.add(previousCode);
+          results.push(makeResult("Edition Changed", currentItem.normalizedCode, previousItem, currentItem, "Same form number with a different edition."));
+        }
       }
-
-      results.push(makeResult("Removed", previousCode, previousItem, null, "Present in Previous only."));
     }
 
+    // Pass 3: Fuzzy description matching for unmatched forms (e.g. CG20110413 vs CG20101219)
+    for (const [previousCode, previousItem] of previous.map.entries()) {
+      if (matchedPreviousCodes.has(previousCode)) continue;
+
+      let bestScore = -1;
+      let bestCurrentCode = null;
+
+      for (const [currentCode, currentItem] of current.map.entries()) {
+        if (matchedCurrentCodes.has(currentCode)) continue;
+
+        const descSim = getSimilarity(previousItem.description, currentItem.description);
+        const codeSim = getSimilarity(previousItem.baseCode, currentItem.baseCode);
+
+        // Strong candidate if description matches exactly, or description is very similar AND code is similar
+        if (descSim === 1.0 || (descSim >= 0.80 && codeSim >= 0.60)) {
+          const score = descSim * 0.7 + codeSim * 0.3;
+          if (score > bestScore) {
+            bestScore = score;
+            bestCurrentCode = currentCode;
+          }
+        }
+      }
+
+      if (bestCurrentCode) {
+        const currentItem = current.map.get(bestCurrentCode);
+        matchedCurrentCodes.add(bestCurrentCode);
+        matchedPreviousCodes.add(previousCode);
+
+        const descSim = getSimilarity(previousItem.description, currentItem.description);
+        const codeDiffers = previousItem.baseCode !== currentItem.baseCode;
+        const editDiffers = previousItem.edition !== currentItem.edition;
+
+        let status = "Edition Changed";
+        let note = "Form code or edition updated.";
+
+        if (codeDiffers && descSim === 1.0) {
+          status = "Edition Changed";
+          note = `Form code updated from ${window.ComparatorParser.displayFormCode(previousItem.normalizedCode)} (descriptions match).`;
+        } else if (descSim >= 0.85) {
+          status = "Possible Typo";
+          note = `Possible form number/description discrepancy (${Math.round(descSim * 100)}% description similarity).`;
+        } else {
+          status = "Description Changed";
+          note = `Form updated (${Math.round(descSim * 100)}% description similarity).`;
+        }
+
+        results.push(makeResult(status, currentItem.normalizedCode, previousItem, currentItem, note));
+      }
+    }
+
+    // Pass 4: Remaining unmatched previous items are Removed
+    for (const [previousCode, previousItem] of previous.map.entries()) {
+      if (!matchedPreviousCodes.has(previousCode)) {
+        results.push(makeResult("Removed", previousCode, previousItem, null, "Present in Previous only."));
+      }
+    }
+
+    // Pass 5: Remaining unmatched current items are Added
     for (const [currentCode, currentItem] of current.map.entries()) {
-      if (!previous.map.has(currentCode) && !editionChangedCurrentCodes.has(currentCode) && !previousBaseLookup.has(currentItem.baseCode)) {
+      if (!matchedCurrentCodes.has(currentCode)) {
         results.push(makeResult("Added", currentCode, null, currentItem, "Present in Current only."));
       }
     }
@@ -120,3 +223,4 @@
     compareSchedules,
   };
 })();
+
