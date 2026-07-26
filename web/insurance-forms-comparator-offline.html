@@ -1,0 +1,1866 @@
+<!doctype html>
+<html data-offline-copy="true" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Insurance Forms Comparator</title>
+    <meta
+      name="description"
+      content="Offline-capable browser comparator for insurance forms and endorsements schedules."
+    />
+    <meta name="theme-color" content="#111827" />
+    <style>
+:root {
+  --bg: #f4f8ff;
+  --panel: #ffffff;
+  --ink: #1e293b;
+  --muted: #667085;
+  --line: #d7e3f5;
+  --navy: #0f4c9a;
+  --blue: #287ee4;
+  --blue-dark: #0f5fb9;
+  --accent: #ff7a1a;
+  --accent-dark: #e35f00;
+  --green: #15803d;
+  --green-bg: #dcfce7;
+  --yellow: #a16207;
+  --yellow-bg: #fef9c3;
+  --red: #b91c1c;
+  --red-bg: #fee2e2;
+  --orange: #c2410c;
+  --orange-bg: #ffedd5;
+  --gray-bg: #e5e7eb;
+  --shadow: 0 18px 45px rgba(40, 126, 228, 0.1);
+}
+
+:root[data-theme="dark"] {
+  --bg: #0b1220;
+  --panel: #111827;
+  --ink: #e5eefb;
+  --muted: #a8b3c7;
+  --line: #26364f;
+  --navy: #60a5fa;
+  --blue: #60a5fa;
+  --blue-dark: #2563eb;
+  --accent: #fb923c;
+  --accent-dark: #f97316;
+  --green: #86efac;
+  --green-bg: #123421;
+  --yellow: #fde68a;
+  --yellow-bg: #3d330b;
+  --red: #fca5a5;
+  --red-bg: #3d1618;
+  --orange: #fdba74;
+  --orange-bg: #3f2411;
+  --gray-bg: #273142;
+  --shadow: 0 18px 45px rgba(0, 0, 0, 0.28);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Aptos, "Segoe UI", Arial, sans-serif;
+}
+
+:root[data-theme="dark"] .sidebar {
+  background: linear-gradient(180deg, #123b74 0%, #0b2c59 55%, #081f3d 100%);
+}
+
+:root[data-theme="dark"] .brand-mark {
+  background: #eaf4ff;
+  color: #0f5fb9;
+}
+
+:root[data-theme="dark"] .nav-list a {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+:root[data-theme="dark"] .privacy-banner {
+  background: #102647;
+  border-color: #1e5da8;
+  color: #dbeafe;
+}
+
+:root[data-theme="dark"] .privacy-banner strong,
+:root[data-theme="dark"] .privacy-banner span {
+  color: #e5eefb;
+}
+
+:root[data-theme="dark"] .memory-banner {
+  background: #111827;
+  border-color: #26364f;
+}
+
+:root[data-theme="dark"] textarea,
+:root[data-theme="dark"] input,
+:root[data-theme="dark"] select,
+:root[data-theme="dark"] .btn.secondary {
+  background: #0f172a;
+  border-color: #2c3f5f;
+  color: #e5eefb;
+}
+
+:root[data-theme="dark"] th {
+  background: #1f2d44;
+  color: #e5eefb;
+}
+
+:root[data-theme="dark"] .result-table th:nth-child(-n + 3) {
+  background: #1d4ed8;
+}
+
+:root[data-theme="dark"] tr.status-match td:nth-child(-n + 3) {
+  background: #1b5e33;
+}
+
+:root[data-theme="dark"] tr.status-added td:nth-child(-n + 3) {
+  background: #6d5408;
+}
+
+:root[data-theme="dark"] tr.status-removed td:nth-child(-n + 3) {
+  background: #6f1d1d;
+}
+
+:root[data-theme="dark"] tr.status-edition-changed td:nth-child(-n + 3),
+:root[data-theme="dark"] tr.status-revised td:nth-child(-n + 3) {
+  background: #7c3d12;
+}
+
+:root[data-theme="dark"] tr.status-unknown-format td:nth-child(-n + 3),
+:root[data-theme="dark"] tr.status-unknown td:nth-child(-n + 3) {
+  background: #334155;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.sidebar {
+  background: linear-gradient(180deg, #287ee4 0%, #0f5fb9 54%, #184f8f 100%);
+  color: #f8fafc;
+  padding: 24px;
+}
+
+.brand {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.brand-mark {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: #ffffff;
+  color: #287ee4;
+  border-radius: 8px;
+  font-weight: 800;
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.brand p,
+.side-panel p {
+  margin: 4px 0 0;
+  color: #cbd5e1;
+  font-size: 13px;
+}
+
+.nav-list {
+  display: grid;
+  gap: 8px;
+  margin: 28px 0;
+}
+
+.nav-list a {
+  color: #ffffff;
+  text-decoration: none;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.side-panel {
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.side-panel h2 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.side-panel ol {
+  margin: 0;
+  padding-left: 18px;
+  color: #e2e8f0;
+  line-height: 1.6;
+  font-size: 13px;
+}
+
+.compact {
+  margin-top: 22px;
+}
+
+.main {
+  padding: 24px;
+  min-width: 0;
+}
+
+.topbar,
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.eyebrow {
+  margin: 0 0 4px;
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.topbar h2,
+.section-head h3 {
+  margin: 0;
+}
+
+.topbar h2 {
+  font-size: 26px;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.privacy-banner,
+.memory-banner {
+  margin: 18px 0 0;
+  padding: 12px 14px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  line-height: 1.45;
+}
+
+.privacy-banner strong {
+  color: #172033;
+}
+
+.privacy-banner span {
+  display: inline-block;
+  margin-left: 8px;
+  color: #475569;
+  font-size: 13px;
+}
+
+.memory-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #ffffff;
+  color: var(--ink);
+}
+
+.memory-banner span {
+  margin-left: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.hidden {
+  display: none;
+}
+
+.collapsed-doc textarea,
+.collapsed-doc .preview-table-wrap {
+  display: none;
+}
+
+.collapsed-doc {
+  box-shadow: none;
+}
+
+.section-note {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.btn:hover {
+  border-color: #93c5fd;
+}
+
+.btn.primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.btn.primary:hover {
+  background: var(--accent-dark);
+  border-color: var(--accent-dark);
+}
+
+.btn.secondary {
+  background: #f8fafc;
+}
+
+.topbar {
+  border-bottom: 4px solid var(--accent);
+  padding-bottom: 18px;
+}
+
+.btn.small {
+  padding: 7px 10px;
+  font-size: 13px;
+}
+
+.btn.danger {
+  color: var(--red);
+  border-color: #fecaca;
+  background: #fff7f7;
+}
+
+.select-label {
+  align-self: center;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+select {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  padding: 0 10px;
+  font: inherit;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 12px;
+  margin: 22px 0;
+}
+
+.metric,
+.chart-panel,
+.policy-pane,
+.results-section,
+.settings-section {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.metric {
+  padding: 14px;
+}
+
+.metric span {
+  display: block;
+  min-height: 34px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.metric strong {
+  font-size: 26px;
+}
+
+.metric.good strong {
+  color: var(--green);
+}
+
+.metric.added strong {
+  color: var(--yellow);
+}
+
+.metric.removed strong {
+  color: var(--red);
+}
+
+.metric.changed strong {
+  color: var(--orange);
+}
+
+.metric.unknown strong {
+  color: #475569;
+}
+
+.dashboard-grid,
+.workspace {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.chart-panel,
+.policy-pane,
+.results-section,
+.settings-section {
+  padding: 16px;
+  min-width: 0;
+}
+
+.section-head span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  max-height: 240px;
+  margin-top: 12px;
+}
+
+textarea {
+  width: 100%;
+  height: 210px;
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  resize: vertical;
+  color: var(--ink);
+  background: #fbfdff;
+  line-height: 1.4;
+}
+
+.preview-table-wrap,
+.results-table-wrap {
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 680px;
+}
+
+th,
+td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+  font-size: 13px;
+}
+
+th {
+  background: #f1f5f9;
+  color: #334155;
+  font-weight: 800;
+}
+
+.result-table th:nth-child(-n + 3) {
+  background: var(--blue-dark);
+  color: #f8fafc;
+}
+
+.result-group-row td {
+  background: linear-gradient(90deg, var(--blue-dark), var(--blue)) !important;
+  color: #f8fafc;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.result-group-button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  padding: 0;
+}
+
+.result-group-meta {
+  color: #eaf4ff;
+  font-weight: 600;
+  margin-left: 10px;
+}
+
+tr.status-match td {
+  background: var(--green-bg);
+}
+
+tr.status-match td:nth-child(-n + 3) {
+  background: #bbf7d0;
+}
+
+tr.status-added td {
+  background: var(--yellow-bg);
+}
+
+tr.status-added td:nth-child(-n + 3) {
+  background: #fde68a;
+}
+
+tr.status-removed td {
+  background: var(--red-bg);
+}
+
+tr.status-removed td:nth-child(-n + 3) {
+  background: #fecaca;
+}
+
+tr.status-edition-changed td {
+  background: var(--orange-bg);
+}
+
+tr.status-edition-changed td:nth-child(-n + 3),
+tr.status-revised td:nth-child(-n + 3) {
+  background: #fed7aa;
+}
+
+tr.status-revised td {
+  background: var(--orange-bg);
+}
+
+tr.status-unknown-format td,
+tr.status-unknown td {
+  background: var(--gray-bg);
+}
+
+tr.status-unknown-format td:nth-child(-n + 3),
+tr.status-unknown td:nth-child(-n + 3) {
+  background: #cbd5e1;
+}
+
+.results-section {
+  margin-bottom: 16px;
+}
+
+.settings-section label {
+  display: block;
+  margin: 12px 0 6px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.settings-section input {
+  width: 100%;
+  max-width: 620px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+@media (max-width: 1500px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1180px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: static;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .main,
+  .sidebar {
+    padding: 16px;
+  }
+
+  .topbar,
+  .section-head,
+  .memory-banner {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .metrics {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
+}
+
+</style>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">IF</div>
+          <div>
+            <h1>Insurance Forms Comparator</h1>
+            <p>Forms & Endorsements schedules</p>
+          </div>
+        </div>
+
+        <nav class="nav-list" aria-label="Workspace sections">
+          <a href="#workspace">Workspace</a>
+          <a href="#results">Results</a>
+          <a href="#settings">Settings</a>
+        </nav>
+
+        <section class="side-panel">
+          <h2>Workflow</h2>
+          <ol>
+          <li>Paste Previous and Current schedules.</li>
+            <li>Clean & Preview both sides.</li>
+            <li>Fix OCR issues in the raw input.</li>
+          <li>Compare, then copy the Excel checklist.</li>
+          </ol>
+        </section>
+
+        <section class="side-panel compact">
+          <h2>Privacy</h2>
+          <p>No pasted policy data is uploaded or sent anywhere. Draft restore saves only in this browser.</p>
+        </section>
+
+        <section class="side-panel compact">
+          <h2>Version</h2>
+          <p>Offline-capable web app 1.8.0</p>
+        </section>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Commercial policy processing</p>
+            <h2>Compare Previous vs Current policy forms</h2>
+          </div>
+          <div class="toolbar">
+            <button class="btn secondary" id="loadSamplesBtn" type="button">Load Sample</button>
+            <button class="btn secondary" id="showQuoteBtn" type="button">Add 3rd Document</button>
+            <button class="btn secondary" id="showFourthBtn" type="button">Add 4th Document</button>
+            <button class="btn secondary" id="themeToggleBtn" type="button">Dark Mode</button>
+            <button class="btn secondary" id="clearBtn" type="button">Clear</button>
+            <span class="btn secondary" aria-disabled="true">Offline Copy</span>
+            <button class="btn primary" id="compareBtn" type="button">Compare Policies</button>
+          </div>
+        </header>
+
+        <section class="privacy-banner" aria-label="Privacy and offline notice">
+          <strong>Privacy notice:</strong>
+          This tool runs entirely in your browser. Pasted policy data is not uploaded, tracked, or sent to a server.
+          Draft restore saves locally on this device only.
+          <span id="offlineStatus">Offline copy ready after first load.</span>
+        </section>
+
+        <section class="memory-banner" aria-label="Local draft restore">
+          <div>
+            <strong>Local draft restore</strong>
+            <span id="memoryStatus">No saved draft yet.</span>
+          </div>
+          <div class="toolbar">
+            <button class="btn secondary small" id="saveDraftBtn" type="button">Save Draft</button>
+            <button class="btn secondary small" id="clearDraftBtn" type="button">Clear Saved Draft</button>
+          </div>
+        </section>
+
+        <section class="metrics" aria-label="Comparison summary">
+          <div class="metric">
+            <span>Previous</span>
+            <strong id="metricPrevious">0</strong>
+          </div>
+          <div class="metric">
+            <span>Current</span>
+            <strong id="metricCurrent">0</strong>
+          </div>
+          <div class="metric good">
+            <span>Matches</span>
+            <strong id="metricMatch">0</strong>
+          </div>
+          <div class="metric added">
+            <span>Added</span>
+            <strong id="metricAdded">0</strong>
+          </div>
+          <div class="metric removed">
+            <span>Removed</span>
+            <strong id="metricRemoved">0</strong>
+          </div>
+          <div class="metric changed">
+            <span>Edition Changed</span>
+            <strong id="metricChanged">0</strong>
+          </div>
+          <div class="metric unknown">
+            <span>Unknown</span>
+            <strong id="metricUnknown">0</strong>
+          </div>
+          <div class="metric">
+            <span>Completion</span>
+            <strong id="metricCompletion">0%</strong>
+          </div>
+        </section>
+
+        <section class="dashboard-grid">
+          <div class="chart-panel">
+            <div class="section-head">
+              <h3>Outcome Mix</h3>
+              <span id="lastCompared">Not compared</span>
+            </div>
+            <canvas id="pieChart" width="360" height="220" aria-label="Outcome mix chart"></canvas>
+          </div>
+          <div class="chart-panel">
+            <div class="section-head">
+              <h3>Status Counts</h3>
+              <span id="comparisonTime">0.00 sec</span>
+            </div>
+            <canvas id="barChart" width="560" height="220" aria-label="Status count chart"></canvas>
+          </div>
+        </section>
+
+        <section class="workspace" id="workspace">
+          <article class="policy-pane">
+            <div class="section-head">
+              <h3>Previous Policy</h3>
+              <button class="btn small" id="cleanPreviousBtn" type="button">Clean & Preview</button>
+            </div>
+            <textarea id="previousInput" spellcheck="false" placeholder="Paste previous policy forms here"></textarea>
+            <div class="preview-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Status</th>
+                    <th>Code</th>
+                    <th>Edition</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody id="previousPreview"></tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="policy-pane">
+            <div class="section-head">
+              <h3>Current Policy</h3>
+              <button class="btn small" id="cleanCurrentBtn" type="button">Clean & Preview</button>
+            </div>
+            <textarea id="currentInput" spellcheck="false" placeholder="Paste current policy forms here"></textarea>
+            <div class="preview-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Status</th>
+                    <th>Code</th>
+                    <th>Edition</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody id="currentPreview"></tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="policy-pane optional-doc hidden" id="quotePane">
+            <div class="section-head">
+              <h3>Quote / 3rd Document</h3>
+              <div class="toolbar">
+                <button class="btn small" id="collapseQuoteBtn" type="button">Minimize</button>
+                <button class="btn small danger" id="removeQuoteBtn" type="button">Remove</button>
+                <button class="btn small" id="cleanQuoteBtn" type="button">Clean & Preview</button>
+              </div>
+            </div>
+            <textarea id="quoteInput" spellcheck="false" placeholder="Paste quote or third schedule here"></textarea>
+            <div class="preview-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Status</th>
+                    <th>Code</th>
+                    <th>Edition</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody id="quotePreview"></tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="policy-pane optional-doc hidden" id="fourthPane">
+            <div class="section-head">
+              <h3>4th Document</h3>
+              <div class="toolbar">
+                <button class="btn small" id="collapseFourthBtn" type="button">Minimize</button>
+                <button class="btn small danger" id="removeFourthBtn" type="button">Remove</button>
+                <button class="btn small" id="cleanFourthBtn" type="button">Clean & Preview</button>
+              </div>
+            </div>
+            <textarea id="fourthInput" spellcheck="false" placeholder="Paste fourth schedule here"></textarea>
+            <div class="preview-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Status</th>
+                    <th>Code</th>
+                    <th>Edition</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody id="fourthPreview"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+
+        <section class="results-section" id="results">
+          <div class="section-head">
+            <h3>Comparison Results</h3>
+            <div class="toolbar">
+              <label class="select-label" for="resultViewSelect">Display / Export</label>
+              <select id="resultViewSelect">
+                <option value="all">All compared documents</option>
+                <option value="Current Policy">Current Policy</option>
+                <option value="Quote / 3rd Document">3rd Document</option>
+                <option value="4th Document">4th Document</option>
+              </select>
+              <button class="btn secondary" id="exportCsvBtn" type="button">Export CSV</button>
+              <button class="btn secondary" id="exportExcelBtn" type="button">Export Excel</button>
+              <button class="btn secondary" id="exportJsonBtn" type="button">Export JSON</button>
+            </div>
+          </div>
+          <p class="section-note" id="exportScopeNote">Exports use the selected Display / Export view.</p>
+          <div class="results-table-wrap">
+            <table class="result-table">
+              <thead>
+                <tr>
+                  <th>Status</th>
+                  <th>Compared Document</th>
+                  <th>Normalized Code</th>
+                  <th>Original Previous</th>
+                  <th>Original Compared Document</th>
+                  <th>Description</th>
+                  <th>Edition</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody id="resultsBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="results-section" id="excelChecklist">
+          <div class="section-head">
+            <div>
+              <h3>Excel Paste Checklist</h3>
+              <p class="section-note">Copy these rows and paste directly into Excel: Form / Description, Edition, Status, Source.</p>
+            </div>
+            <div class="toolbar">
+              <button class="btn secondary" id="copyExcelBtn" type="button">Copy for Excel</button>
+              <button class="btn secondary" id="downloadTsvBtn" type="button">Download TSV</button>
+            </div>
+          </div>
+          <div class="results-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Form / Description</th>
+                  <th>Edition</th>
+                  <th>Status</th>
+                  <th>Compared Document</th>
+                </tr>
+              </thead>
+              <tbody id="excelChecklistBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="settings-section" id="settings">
+          <div class="section-head">
+            <h3>Settings</h3>
+            <button class="btn small" id="applySettingsBtn" type="button">Apply Prefixes</button>
+          </div>
+          <label for="prefixInput">Known prefixes</label>
+          <input
+            id="prefixInput"
+            type="text"
+            value="AG, AP, B, BM, BP, CA, CF, CG, CL, CM, CP, CR, CU, CX, CY, DE, DL, DP, DS, EB, EP, FB, FL, FO, FP, GI, HO, IH, IL, IM, IN, MC, MI, MM, MP, OP, PM, PP, PR, SE, SF, TC, WC"
+          />
+        </section>
+      </main>
+    </div>
+
+    <script>
+(function () {
+  const defaultPrefixes = [
+    "AG", "AP", "B", "BM", "BP", "CA", "CF", "CG", "CL", "CM", "CP", "CR", "CU", "CX", "CY",
+    "DE", "DL", "DP", "DS", "EB", "EP", "FB", "FL", "FO", "FP", "GI", "HO", "IH", "IL", "IM",
+    "IN", "MC", "MI", "MM", "MP", "OP", "PM", "PP", "PR", "SE", "SF", "TC", "WC"
+  ];
+
+  function cleanText(value) {
+    return String(value || "")
+      .replace(/\t/g, " ")
+      .replace(/\u00a0/g, " ")
+      .replace(/[–—]/g, "-")
+      .replace(/[［\[]/g, "(")
+      .replace(/[］\]]/g, ")")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function parsePrefixes(value) {
+    const parts = String(value || "")
+      .split(",")
+      .map((part) => cleanText(part).toUpperCase())
+      .filter(Boolean);
+    return parts.length ? parts : defaultPrefixes.slice();
+  }
+
+  function formatEdition(edition) {
+    if (!edition) return "";
+    return edition.length === 4 ? `${edition.slice(0, 2)}/${edition.slice(2)}` : edition;
+  }
+
+  function displayFormCode(normalizedCode) {
+    const compact = cleanText(normalizedCode).replace(/\s/g, "").toUpperCase();
+    if (!/^[A-Z]{2}\d{8}$/.test(compact)) return normalizedCode || "";
+    const prefix = compact.slice(0, 2);
+    const form = compact.slice(2, 6);
+    const edition = compact.slice(6, 10);
+    return `${prefix} ${form.slice(0, 2)} ${form.slice(2)} (${edition.slice(0, 2)}/${edition.slice(2)})`;
+  }
+
+  function parseFormLine(rawLine, knownPrefixes) {
+    const clean = cleanText(rawLine);
+    const result = {
+      raw: rawLine,
+      clean,
+      normalizedCode: "",
+      baseCode: "",
+      displayCode: clean,
+      edition: "",
+      displayEdition: "",
+      description: "",
+      known: false,
+      parseStatus: clean ? "Unknown Format" : "Blank",
+    };
+
+    if (!clean) return result;
+
+    const match = clean.match(/^\s*([A-Z]{2})\s*(\d{2})\s*(\d{2})\s*(?:\(?\s*(\d{2})\s*\/?\s*(\d{2})\s*\)?)?/i);
+    if (!match) return result;
+
+    const prefix = match[1].toUpperCase();
+    const formNumber = `${match[2]}${match[3]}`;
+    const edition = match[4] && match[5] ? `${match[4]}${match[5]}` : "";
+    const normalizedCode = `${prefix}${formNumber}${edition}`;
+    const description = cleanText(clean.slice(match[0].length));
+    const known = knownPrefixes.includes(prefix);
+
+    return {
+      ...result,
+      normalizedCode,
+      baseCode: `${prefix}${formNumber}`,
+      displayCode: displayFormCode(normalizedCode),
+      edition,
+      displayEdition: formatEdition(edition),
+      description,
+      known,
+      parseStatus: known && normalizedCode ? "Parsed" : "Unknown Format",
+    };
+  }
+
+  function parseSchedule(text, knownPrefixes) {
+    return String(text || "")
+      .split(/\r?\n/)
+      .map((line) => parseFormLine(line, knownPrefixes))
+      .filter((item) => item.clean);
+  }
+
+  window.ComparatorParser = {
+    cleanText,
+    parsePrefixes,
+    parseFormLine,
+    parseSchedule,
+    displayFormCode,
+    formatEdition,
+    defaultPrefixes,
+  };
+})();
+
+</script>
+    <script>
+(function () {
+  function buildKnownMap(items) {
+    const map = new Map();
+    const unknown = [];
+
+    for (const item of items) {
+      if (item.known && item.normalizedCode) {
+        if (!map.has(item.normalizedCode)) {
+          map.set(item.normalizedCode, { ...item, duplicates: [] });
+        } else {
+          map.get(item.normalizedCode).duplicates.push(item.raw);
+        }
+      } else {
+        unknown.push(item);
+      }
+    }
+
+    return { map, unknown };
+  }
+
+  function buildBaseLookup(map) {
+    const lookup = new Map();
+    for (const [normalizedCode, item] of map.entries()) {
+      if (item.baseCode && !lookup.has(item.baseCode)) {
+        lookup.set(item.baseCode, normalizedCode);
+      }
+    }
+    return lookup;
+  }
+
+  function preferredDescription(previousItem, currentItem) {
+    return currentItem.description || previousItem.description || "";
+  }
+
+  function makeResult(status, normalizedCode, previousItem, currentItem, notes) {
+    const edition = status === "Edition Changed"
+      ? `${window.ComparatorParser.formatEdition(previousItem.edition)} -> ${window.ComparatorParser.formatEdition(currentItem.edition)}`
+      : window.ComparatorParser.formatEdition((currentItem || previousItem || {}).edition || "");
+
+    return {
+      status,
+      normalizedCode: normalizedCode || "",
+      displayCode: normalizedCode ? window.ComparatorParser.displayFormCode(normalizedCode) : "",
+      originalPrevious: previousItem ? previousItem.raw : "",
+      originalCurrent: currentItem ? currentItem.raw : "",
+      description: previousItem && currentItem ? preferredDescription(previousItem, currentItem) : ((currentItem || previousItem || {}).description || ""),
+      edition,
+      notes,
+    };
+  }
+
+  function compareSchedules(previousItems, currentItems) {
+    const previous = buildKnownMap(previousItems);
+    const current = buildKnownMap(currentItems);
+    const currentBaseLookup = buildBaseLookup(current.map);
+    const previousBaseLookup = buildBaseLookup(previous.map);
+    const editionChangedCurrentCodes = new Set();
+    const results = [];
+
+    for (const [previousCode, previousItem] of previous.map.entries()) {
+      if (current.map.has(previousCode)) {
+        results.push(makeResult("Match", previousCode, previousItem, current.map.get(previousCode), "Exact form and edition match."));
+        continue;
+      }
+
+      if (currentBaseLookup.has(previousItem.baseCode)) {
+        const currentCode = currentBaseLookup.get(previousItem.baseCode);
+        const currentItem = current.map.get(currentCode);
+        editionChangedCurrentCodes.add(currentCode);
+        results.push(makeResult("Edition Changed", currentItem.normalizedCode, previousItem, currentItem, "Same form number with a different edition."));
+        continue;
+      }
+
+      results.push(makeResult("Removed", previousCode, previousItem, null, "Present in Previous only."));
+    }
+
+    for (const [currentCode, currentItem] of current.map.entries()) {
+      if (!previous.map.has(currentCode) && !editionChangedCurrentCodes.has(currentCode) && !previousBaseLookup.has(currentItem.baseCode)) {
+        results.push(makeResult("Added", currentCode, null, currentItem, "Present in Current only."));
+      }
+    }
+
+    for (const item of previous.unknown) {
+      results.push({
+        status: "Unknown Format",
+        normalizedCode: item.clean,
+        displayCode: item.clean,
+        originalPrevious: item.raw,
+        originalCurrent: "",
+        description: item.description || "",
+        edition: window.ComparatorParser.formatEdition(item.edition),
+        notes: "Review raw Previous input.",
+      });
+    }
+
+    for (const item of current.unknown) {
+      results.push({
+        status: "Unknown Format",
+        normalizedCode: item.clean,
+        displayCode: item.clean,
+        originalPrevious: "",
+        originalCurrent: item.raw,
+        description: item.description || "",
+        edition: window.ComparatorParser.formatEdition(item.edition),
+        notes: "Review raw Current input.",
+      });
+    }
+
+    return {
+      results,
+      previousKnownCount: previous.map.size,
+      currentKnownCount: current.map.size,
+      previousCount: previousItems.length,
+      currentCount: currentItems.length,
+      unknownCount: previous.unknown.length + current.unknown.length,
+    };
+  }
+
+  window.ComparatorEngine = {
+    compareSchedules,
+  };
+})();
+
+</script>
+    <script>
+(function () {
+  const samples = {
+    previous: [
+      "CG20100413 ADDITIONAL INSURED - OWNERS, LESSEES OR CONTRACTORS",
+      "CG 20 37 (04/13) ADDITIONAL INSURED - OWNERS, LESSEES OR CONTRACTORS - COMPLETED OPERATIONS",
+      "IL00171198 COMMON POLICY CONDITIONS",
+      "CA 00 01 10/13 BUSINESS AUTO COVERAGE FORM",
+      "CP00100695 BUILDING AND PERSONAL PROPERTY COVERAGE FORM",
+      "WEIRD OCR LINE WITHOUT A FORM NUMBER",
+    ].join("\n"),
+    current: [
+      "CG 20 10 (12/19) ADDITIONAL INSURED - OWNERS, LESSEES OR CONTRACTORS",
+      "CG 20 37 (04/13) ADDITIONAL INSURED - OWNERS, LESSEES OR CONTRACTORS - COMPLETED OPERATIONS",
+      "IL 00 17 (11/98) COMMON POLICY CONDITIONS",
+      "CA00011013 BUSINESS AUTO COVERAGE FORM",
+      "BP 00 03 07/13 BUSINESSOWNERS COVERAGE FORM",
+      "OCR? CP FORM BADLY SCANNED",
+    ].join("\n"),
+    quote: [
+      "CG 20 10 (12/19) ADDITIONAL INSURED - OWNERS, LESSEES OR CONTRACTORS",
+      "CG 20 37 (04/13) ADDITIONAL INSURED - OWNERS, LESSEES OR CONTRACTORS - COMPLETED OPERATIONS",
+      "BP 00 03 07/13 BUSINESSOWNERS COVERAGE FORM",
+    ].join("\n"),
+  };
+
+  const state = {
+    prefixes: window.ComparatorParser.defaultPrefixes.slice(),
+    previousItems: [],
+    currentItems: [],
+    quoteItems: [],
+    fourthItems: [],
+    results: [],
+    checklistRows: [],
+    collapsedResultGroups: new Set(),
+  };
+
+  const draftStorageKey = "formsComparatorDraftV1";
+  let draftSaveTimer = null;
+
+  const elements = {
+    previousInput: document.getElementById("previousInput"),
+    currentInput: document.getElementById("currentInput"),
+    quoteInput: document.getElementById("quoteInput"),
+    fourthInput: document.getElementById("fourthInput"),
+    previousPreview: document.getElementById("previousPreview"),
+    currentPreview: document.getElementById("currentPreview"),
+    quotePreview: document.getElementById("quotePreview"),
+    fourthPreview: document.getElementById("fourthPreview"),
+    resultsBody: document.getElementById("resultsBody"),
+    excelChecklistBody: document.getElementById("excelChecklistBody"),
+    resultViewSelect: document.getElementById("resultViewSelect"),
+    prefixInput: document.getElementById("prefixInput"),
+    lastCompared: document.getElementById("lastCompared"),
+    comparisonTime: document.getElementById("comparisonTime"),
+    pieChart: document.getElementById("pieChart"),
+    barChart: document.getElementById("barChart"),
+    offlineStatus: document.getElementById("offlineStatus"),
+    themeToggleBtn: document.getElementById("themeToggleBtn"),
+    memoryStatus: document.getElementById("memoryStatus"),
+  };
+
+  const metricIds = {
+    Previous: "metricPrevious",
+    Current: "metricCurrent",
+    Match: "metricMatch",
+    Added: "metricAdded",
+    Removed: "metricRemoved",
+    "Edition Changed": "metricChanged",
+    "Unknown Format": "metricUnknown",
+    Completion: "metricCompletion",
+  };
+
+  function statusClass(status) {
+    return `status-${status.toLowerCase().replace(/\s+/g, "-")}`;
+  }
+
+  function escapeHtml(value) {
+    return String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function renderPreview(target, items) {
+    target.innerHTML = items.length
+      ? items.map((item) => `
+          <tr class="${statusClass(item.parseStatus)}">
+            <td>${escapeHtml(item.parseStatus)}</td>
+            <td>${escapeHtml(item.displayCode)}</td>
+            <td>${escapeHtml(item.displayEdition)}</td>
+            <td>${escapeHtml(item.description)}</td>
+          </tr>
+        `).join("")
+      : `<tr><td colspan="4">No parsed rows yet.</td></tr>`;
+  }
+
+  function renderResults() {
+    const rows = selectedResults();
+    if (!rows.length) {
+      elements.resultsBody.innerHTML = `<tr><td colspan="8">Run a comparison to see results for the selected document.</td></tr>`;
+      updateExportScopeNote();
+      return;
+    }
+
+    if (selectedSource() === "all") {
+      const groups = groupRowsBySource(rows);
+      elements.resultsBody.innerHTML = groups.map(({ source, rows: groupRows }) => {
+        const collapsed = state.collapsedResultGroups.has(source);
+        const counts = summarize(groupRows);
+        const meta = `${groupRows.length} rows | ${counts.Match || 0} match | ${counts.Added || 0} added | ${counts.Removed || 0} removed | ${counts["Edition Changed"] || 0} revised | ${counts["Unknown Format"] || 0} unknown`;
+        return `
+          <tr class="result-group-row">
+            <td colspan="8">
+              <button class="result-group-button" type="button" data-result-group="${escapeHtml(source)}">
+                ${collapsed ? "Expand" : "Minimize"} ${escapeHtml(displaySourceName(source))}
+              </button>
+              <span class="result-group-meta">${escapeHtml(meta)}</span>
+            </td>
+          </tr>
+          ${collapsed ? "" : groupRows.map(resultRowHtml).join("")}
+        `;
+      }).join("");
+      updateExportScopeNote();
+      return;
+    }
+
+    elements.resultsBody.innerHTML = rows.map(resultRowHtml).join("");
+    updateExportScopeNote();
+  }
+
+  function resultRowHtml(item) {
+    return `
+          <tr class="${statusClass(item.status)}">
+            <td>${escapeHtml(item.status)}</td>
+            <td>${escapeHtml(item.source || "Current Policy")}</td>
+            <td>${escapeHtml(item.displayCode || item.normalizedCode)}</td>
+            <td>${escapeHtml(item.originalPrevious)}</td>
+            <td>${escapeHtml(item.originalCurrent)}</td>
+            <td>${escapeHtml(item.description)}</td>
+            <td>${escapeHtml(item.edition)}</td>
+            <td>${escapeHtml(item.notes)}</td>
+          </tr>
+        `;
+  }
+
+  function groupRowsBySource(rows) {
+    const sourceOrder = ["Current Policy", "Quote / 3rd Document", "4th Document"];
+    return sourceOrder
+      .map((source) => ({ source, rows: rows.filter((row) => (row.source || "Current Policy") === source) }))
+      .filter((group) => group.rows.length);
+  }
+
+  function displaySourceName(source) {
+    if (source === "Quote / 3rd Document") return "3rd Document";
+    return source;
+  }
+
+  function updateExportScopeNote() {
+    const note = document.getElementById("exportScopeNote");
+    if (!note) return;
+    const source = selectedSource();
+    const label = source === "all" ? "All compared documents" : displaySourceName(source);
+    note.textContent = `Exports use the selected Display / Export view: ${label}.`;
+  }
+
+  function selectedSource() {
+    return elements.resultViewSelect ? elements.resultViewSelect.value : "all";
+  }
+
+  function selectedResults() {
+    const source = selectedSource();
+    return source === "all" ? state.results : state.results.filter((row) => (row.source || "Current Policy") === source);
+  }
+
+  function selectedChecklistRows() {
+    const source = selectedSource();
+    return source === "all" ? state.checklistRows : state.checklistRows.filter((row) => row.source === source);
+  }
+
+  function checklistStatus(status) {
+    return status === "Edition Changed" ? "Revised" : status;
+  }
+
+  function formDescription(row) {
+    const code = (row.displayCode || row.normalizedCode || "").replace(/\s*\(\d{2}\/\d{2}\)\s*$/, "");
+    return [code, row.description].filter(Boolean).join(" ") || code || row.normalizedCode || "";
+  }
+
+  function makeChecklistRows(results) {
+    return results
+      .filter((row) => row.status !== "Unknown Format")
+      .map((row) => ({
+        formDescription: formDescription(row),
+        edition: checklistEdition(row.edition),
+        status: checklistStatus(row.status),
+        source: row.source || "Current Policy",
+      }));
+  }
+
+  function checklistEdition(value) {
+    let edition = String(value || "").trim();
+    if (edition.includes("->")) edition = edition.split("->").pop().trim();
+    if (!edition) return "";
+    return edition.startsWith("(") ? edition : `(${edition})`;
+  }
+
+  function renderChecklist() {
+    const rows = selectedChecklistRows();
+    elements.excelChecklistBody.innerHTML = rows.length
+      ? rows.map((row) => `
+          <tr class="${statusClass(row.status)}">
+            <td>${escapeHtml(row.formDescription)}</td>
+            <td>${escapeHtml(row.edition)}</td>
+            <td>${escapeHtml(row.status)}</td>
+            <td>${escapeHtml(row.source)}</td>
+          </tr>
+        `).join("")
+      : `<tr><td colspan="4">Run a comparison to generate Excel-ready rows for the selected document.</td></tr>`;
+  }
+
+  function summarize(results) {
+    return results.reduce((acc, item) => {
+      acc[item.status] = (acc[item.status] || 0) + 1;
+      return acc;
+    }, {});
+  }
+
+  function updateMetrics(summary, comparisonMeta) {
+    const total = Math.max(1, state.results.length);
+    const known = (summary.Match || 0) + (summary.Added || 0) + (summary.Removed || 0) + (summary["Edition Changed"] || 0);
+    const completion = Math.round((known / total) * 100);
+    const values = {
+      Previous: comparisonMeta ? comparisonMeta.previousCount : state.previousItems.length,
+      Current: comparisonMeta ? comparisonMeta.currentCount : state.currentItems.length,
+      Match: summary.Match || 0,
+      Added: summary.Added || 0,
+      Removed: summary.Removed || 0,
+      "Edition Changed": summary["Edition Changed"] || 0,
+      "Unknown Format": summary["Unknown Format"] || 0,
+      Completion: `${state.results.length ? completion : 0}%`,
+    };
+
+    for (const [key, id] of Object.entries(metricIds)) {
+      document.getElementById(id).textContent = values[key];
+    }
+  }
+
+  function cleanPrevious() {
+    state.prefixes = window.ComparatorParser.parsePrefixes(elements.prefixInput.value);
+    state.previousItems = window.ComparatorParser.parseSchedule(elements.previousInput.value, state.prefixes);
+    renderPreview(elements.previousPreview, state.previousItems);
+    updateMetrics(summarize(state.results), null);
+  }
+
+  function cleanCurrent() {
+    state.prefixes = window.ComparatorParser.parsePrefixes(elements.prefixInput.value);
+    state.currentItems = window.ComparatorParser.parseSchedule(elements.currentInput.value, state.prefixes);
+    renderPreview(elements.currentPreview, state.currentItems);
+    updateMetrics(summarize(state.results), null);
+  }
+
+  function cleanQuote() {
+    state.prefixes = window.ComparatorParser.parsePrefixes(elements.prefixInput.value);
+    state.quoteItems = window.ComparatorParser.parseSchedule(elements.quoteInput.value, state.prefixes);
+    renderPreview(elements.quotePreview, state.quoteItems);
+  }
+
+  function cleanFourth() {
+    state.prefixes = window.ComparatorParser.parsePrefixes(elements.prefixInput.value);
+    state.fourthItems = window.ComparatorParser.parseSchedule(elements.fourthInput.value, state.prefixes);
+    renderPreview(elements.fourthPreview, state.fourthItems);
+  }
+
+  function compareAgainstPrevious(label, items) {
+    const comparison = window.ComparatorEngine.compareSchedules(state.previousItems, items);
+    comparison.results.forEach((row) => {
+      row.source = label;
+      if (label !== "Current Policy") row.notes = `${label}: ${row.notes}`;
+    });
+    return comparison;
+  }
+
+  function compare() {
+    const started = performance.now();
+    cleanPrevious();
+    cleanCurrent();
+    if (!document.getElementById("quotePane").classList.contains("hidden")) cleanQuote();
+    if (!document.getElementById("fourthPane").classList.contains("hidden")) cleanFourth();
+
+    const comparisons = [compareAgainstPrevious("Current Policy", state.currentItems)];
+    if (state.quoteItems.length) comparisons.push(compareAgainstPrevious("Quote / 3rd Document", state.quoteItems));
+    if (state.fourthItems.length) comparisons.push(compareAgainstPrevious("4th Document", state.fourthItems));
+
+    const comparison = comparisons[0];
+    state.results = comparisons.flatMap((item) => item.results);
+    state.checklistRows = makeChecklistRows(state.results);
+    const summary = summarize(state.results);
+    renderResults();
+    renderChecklist();
+    updateMetrics(summary, comparison);
+    drawCharts(summary);
+    const seconds = ((performance.now() - started) / 1000).toFixed(2);
+    elements.comparisonTime.textContent = `${seconds} sec`;
+    elements.lastCompared.textContent = new Date().toLocaleString();
+    saveDraft();
+  }
+
+  function drawCharts(summary) {
+    const data = [
+      ["Match", summary.Match || 0, "#15803d"],
+      ["Added", summary.Added || 0, "#a16207"],
+      ["Removed", summary.Removed || 0, "#b91c1c"],
+      ["Edition Changed", summary["Edition Changed"] || 0, "#c2410c"],
+      ["Unknown", summary["Unknown Format"] || 0, "#64748b"],
+    ];
+    drawPie(elements.pieChart, data);
+    drawBars(elements.barChart, data);
+  }
+
+  function drawPie(canvas, data) {
+    const ctx = canvas.getContext("2d");
+    const width = canvas.width;
+    const height = canvas.height;
+    ctx.clearRect(0, 0, width, height);
+    const total = data.reduce((sum, item) => sum + item[1], 0);
+    const cx = 108;
+    const cy = 112;
+    const radius = 78;
+    let angle = -Math.PI / 2;
+
+    if (!total) {
+      ctx.fillStyle = "#e5e7eb";
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      for (const [, value, color] of data) {
+        const slice = (value / total) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, radius, angle, angle + slice);
+        ctx.closePath();
+        ctx.fillStyle = color;
+        ctx.fill();
+        angle += slice;
+      }
+    }
+
+    data.forEach((item, index) => {
+      const y = 54 + index * 28;
+      ctx.fillStyle = item[2];
+      ctx.fillRect(220, y - 10, 14, 14);
+      ctx.fillStyle = "#172033";
+      ctx.font = "13px Segoe UI, Arial";
+      ctx.fillText(`${item[0]}: ${item[1]}`, 244, y + 1);
+    });
+  }
+
+  function drawBars(canvas, data) {
+    const ctx = canvas.getContext("2d");
+    const width = canvas.width;
+    const height = canvas.height;
+    ctx.clearRect(0, 0, width, height);
+    const max = Math.max(1, ...data.map((item) => item[1]));
+    const left = 132;
+    const top = 28;
+    const rowHeight = 34;
+    const barMax = width - left - 64;
+
+    ctx.font = "13px Segoe UI, Arial";
+    data.forEach((item, index) => {
+      const y = top + index * rowHeight;
+      const barWidth = (item[1] / max) * barMax;
+      ctx.fillStyle = "#334155";
+      ctx.fillText(item[0], 12, y + 18);
+      ctx.fillStyle = "#e2e8f0";
+      ctx.fillRect(left, y, barMax, 18);
+      ctx.fillStyle = item[2];
+      ctx.fillRect(left, y, barWidth, 18);
+      ctx.fillStyle = "#172033";
+      ctx.fillText(String(item[1]), left + barMax + 14, y + 15);
+    });
+  }
+
+  function toCsv(rows) {
+    const headers = ["Source", "Status", "Normalized Code", "Original Previous", "Original Current", "Description", "Edition", "Notes"];
+    const body = rows.map((row) => [
+      row.source || "Current Policy",
+      row.status,
+      row.displayCode || row.normalizedCode,
+      row.originalPrevious,
+      row.originalCurrent,
+      row.description,
+      row.edition,
+      row.notes,
+    ]);
+    return [headers, ...body]
+      .map((line) => line.map((cell) => `"${String(cell || "").replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+  }
+
+  function checklistTsv() {
+    const headers = ["Form / Description", "Edition", "Status", "Compared Document"];
+    const body = selectedChecklistRows().map((row) => [row.formDescription, row.edition, row.status, row.source]);
+    return [headers, ...body]
+      .map((line) => line.map((cell) => String(cell || "").replace(/\t/g, " ").replace(/\r?\n/g, " ")).join("\t"))
+      .join("\n");
+  }
+
+  function excelHtml() {
+    const resultRows = selectedResults();
+    const checklistRows = selectedChecklistRows();
+    const label = selectedSource() === "all" ? "All compared documents" : displaySourceName(selectedSource());
+    const table = (headers, rows) => `
+      <table border="1">
+        <thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead>
+        <tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("")}</tbody>
+      </table>`;
+    const resultTable = table(
+      ["Source", "Status", "Code", "Original Previous", "Original Compared", "Description", "Edition", "Notes"],
+      resultRows.map((row) => [
+        row.source || "Current Policy",
+        row.status,
+        row.displayCode || row.normalizedCode,
+        row.originalPrevious,
+        row.originalCurrent,
+        row.description,
+        row.edition,
+        row.notes,
+      ])
+    );
+    const checklistTable = table(
+      ["Form / Description", "Edition", "Status", "Compared Document"],
+      checklistRows.map((row) => [row.formDescription, row.edition, row.status, row.source])
+    );
+    return `<!doctype html><html><head><meta charset="utf-8"></head><body><h1>Comparison Results - ${escapeHtml(label)}</h1>${resultTable}<h1>Excel Paste Checklist - ${escapeHtml(label)}</h1>${checklistTable}</body></html>`;
+  }
+
+  async function copyChecklist() {
+    const text = checklistTsv();
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const helper = document.createElement("textarea");
+      helper.value = text;
+      document.body.appendChild(helper);
+      helper.select();
+      document.execCommand("copy");
+      helper.remove();
+    }
+    document.getElementById("copyExcelBtn").textContent = "Copied";
+    window.setTimeout(() => {
+      document.getElementById("copyExcelBtn").textContent = "Copy for Excel";
+    }, 1400);
+  }
+
+  function downloadFile(fileName, content, mimeType) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function draftPayload() {
+    return {
+      savedAt: new Date().toISOString(),
+      previousInput: elements.previousInput.value,
+      currentInput: elements.currentInput.value,
+      quoteInput: elements.quoteInput.value,
+      fourthInput: elements.fourthInput.value,
+      prefixes: elements.prefixInput.value,
+      quoteVisible: !document.getElementById("quotePane").classList.contains("hidden"),
+      fourthVisible: !document.getElementById("fourthPane").classList.contains("hidden"),
+      resultView: selectedSource(),
+    };
+  }
+
+  function updateMemoryStatus(savedAt) {
+    if (!elements.memoryStatus) return;
+    elements.memoryStatus.textContent = savedAt
+      ? `Saved locally ${new Date(savedAt).toLocaleString()}.`
+      : "No saved draft yet.";
+  }
+
+  function saveDraft() {
+    try {
+      const payload = draftPayload();
+      localStorage.setItem(draftStorageKey, JSON.stringify(payload));
+      updateMemoryStatus(payload.savedAt);
+    } catch (error) {
+      if (elements.memoryStatus) elements.memoryStatus.textContent = "Draft memory is unavailable in this browser.";
+    }
+  }
+
+  function scheduleDraftSave() {
+    window.clearTimeout(draftSaveTimer);
+    draftSaveTimer = window.setTimeout(saveDraft, 450);
+  }
+
+  function loadDraft() {
+    try {
+      const raw = localStorage.getItem(draftStorageKey);
+      if (!raw) {
+        updateMemoryStatus(null);
+        return false;
+      }
+
+      const draft = JSON.parse(raw);
+      elements.previousInput.value = draft.previousInput || "";
+      elements.currentInput.value = draft.currentInput || "";
+      elements.quoteInput.value = draft.quoteInput || "";
+      elements.fourthInput.value = draft.fourthInput || "";
+      elements.prefixInput.value = draft.prefixes || elements.prefixInput.value;
+      if (draft.quoteVisible || draft.quoteInput) document.getElementById("quotePane").classList.remove("hidden");
+      if (draft.fourthVisible || draft.fourthInput) document.getElementById("fourthPane").classList.remove("hidden");
+      if (draft.resultView && elements.resultViewSelect.querySelector(`option[value="${draft.resultView}"]`)) {
+        elements.resultViewSelect.value = draft.resultView;
+      }
+      updateMemoryStatus(draft.savedAt);
+      return true;
+    } catch (error) {
+      updateMemoryStatus(null);
+      return false;
+    }
+  }
+
+  function clearSavedDraft() {
+    try {
+      localStorage.removeItem(draftStorageKey);
+    } catch (error) {
+      // Current page data remains available even if browser storage fails.
+    }
+    updateMemoryStatus(null);
+  }
+
+  function applyTheme(theme) {
+    document.documentElement.dataset.theme = theme;
+    elements.themeToggleBtn.textContent = theme === "dark" ? "Light Mode" : "Dark Mode";
+  }
+
+  function toggleTheme() {
+    const nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    applyTheme(nextTheme);
+    drawCharts(summarize(state.results));
+    try {
+      localStorage.setItem("formsComparatorTheme", nextTheme);
+    } catch (error) {
+      // Theme preference only; policy data is never stored.
+    }
+  }
+
+  function clearAll() {
+    elements.previousInput.value = "";
+    elements.currentInput.value = "";
+    elements.quoteInput.value = "";
+    elements.fourthInput.value = "";
+    state.previousItems = [];
+    state.currentItems = [];
+    state.quoteItems = [];
+    state.fourthItems = [];
+    state.results = [];
+    state.checklistRows = [];
+    renderPreview(elements.previousPreview, []);
+    renderPreview(elements.currentPreview, []);
+    renderPreview(elements.quotePreview, []);
+    renderPreview(elements.fourthPreview, []);
+    renderResults();
+    renderChecklist();
+    updateMetrics({}, null);
+    drawCharts({});
+    elements.lastCompared.textContent = "Not compared";
+    elements.comparisonTime.textContent = "0.00 sec";
+  }
+
+  document.getElementById("cleanPreviousBtn").addEventListener("click", cleanPrevious);
+  document.getElementById("cleanCurrentBtn").addEventListener("click", cleanCurrent);
+  document.getElementById("cleanQuoteBtn").addEventListener("click", cleanQuote);
+  document.getElementById("cleanFourthBtn").addEventListener("click", cleanFourth);
+  document.getElementById("compareBtn").addEventListener("click", compare);
+  document.getElementById("applySettingsBtn").addEventListener("click", () => {
+    state.prefixes = window.ComparatorParser.parsePrefixes(elements.prefixInput.value);
+    cleanPrevious();
+    cleanCurrent();
+    cleanQuote();
+    cleanFourth();
+  });
+  document.getElementById("loadSamplesBtn").addEventListener("click", () => {
+    elements.previousInput.value = samples.previous;
+    elements.currentInput.value = samples.current;
+    elements.quoteInput.value = samples.quote;
+    document.getElementById("quotePane").classList.remove("hidden");
+    compare();
+  });
+  document.getElementById("showQuoteBtn").addEventListener("click", () => {
+    document.getElementById("quotePane").classList.remove("hidden", "collapsed-doc");
+    document.getElementById("collapseQuoteBtn").textContent = "Minimize";
+    elements.quoteInput.focus();
+    scheduleDraftSave();
+  });
+  document.getElementById("showFourthBtn").addEventListener("click", () => {
+    document.getElementById("fourthPane").classList.remove("hidden", "collapsed-doc");
+    document.getElementById("collapseFourthBtn").textContent = "Minimize";
+    elements.fourthInput.focus();
+    scheduleDraftSave();
+  });
+  document.getElementById("collapseQuoteBtn").addEventListener("click", () => {
+    const pane = document.getElementById("quotePane");
+    pane.classList.toggle("collapsed-doc");
+    document.getElementById("collapseQuoteBtn").textContent = pane.classList.contains("collapsed-doc") ? "Expand" : "Minimize";
+  });
+  document.getElementById("collapseFourthBtn").addEventListener("click", () => {
+    const pane = document.getElementById("fourthPane");
+    pane.classList.toggle("collapsed-doc");
+    document.getElementById("collapseFourthBtn").textContent = pane.classList.contains("collapsed-doc") ? "Expand" : "Minimize";
+  });
+  document.getElementById("removeQuoteBtn").addEventListener("click", () => {
+    elements.quoteInput.value = "";
+    state.quoteItems = [];
+    document.getElementById("quotePane").classList.add("hidden");
+    if (selectedSource() === "Quote / 3rd Document") elements.resultViewSelect.value = "all";
+    renderPreview(elements.quotePreview, []);
+    compare();
+  });
+  document.getElementById("removeFourthBtn").addEventListener("click", () => {
+    elements.fourthInput.value = "";
+    state.fourthItems = [];
+    document.getElementById("fourthPane").classList.add("hidden");
+    if (selectedSource() === "4th Document") elements.resultViewSelect.value = "all";
+    renderPreview(elements.fourthPreview, []);
+    compare();
+  });
+  document.getElementById("resultViewSelect").addEventListener("change", () => {
+    renderResults();
+    renderChecklist();
+  });
+  elements.resultsBody.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-result-group]");
+    if (!button) return;
+    const source = button.getAttribute("data-result-group");
+    if (state.collapsedResultGroups.has(source)) {
+      state.collapsedResultGroups.delete(source);
+    } else {
+      state.collapsedResultGroups.add(source);
+    }
+    renderResults();
+  });
+  document.getElementById("clearBtn").addEventListener("click", clearAll);
+  document.getElementById("saveDraftBtn").addEventListener("click", saveDraft);
+  document.getElementById("clearDraftBtn").addEventListener("click", clearSavedDraft);
+  document.getElementById("themeToggleBtn").addEventListener("click", toggleTheme);
+  document.getElementById("exportCsvBtn").addEventListener("click", () => {
+    downloadFile("insurance-forms-comparison.csv", toCsv(selectedResults()), "text/csv;charset=utf-8");
+  });
+  document.getElementById("exportExcelBtn").addEventListener("click", () => {
+    downloadFile("insurance-forms-comparison.xls", excelHtml(), "application/vnd.ms-excel;charset=utf-8");
+  });
+  document.getElementById("exportJsonBtn").addEventListener("click", () => {
+    downloadFile("insurance-forms-comparison.json", JSON.stringify(selectedResults(), null, 2), "application/json;charset=utf-8");
+  });
+  document.getElementById("copyExcelBtn").addEventListener("click", copyChecklist);
+  document.getElementById("downloadTsvBtn").addEventListener("click", () => {
+    downloadFile("insurance-forms-checklist.tsv", checklistTsv(), "text/tab-separated-values;charset=utf-8");
+  });
+  if ("serviceWorker" in navigator && !document.documentElement.dataset.offlineCopy) {
+    navigator.serviceWorker.register("./service-worker.js").then((registration) => {
+      registration.update();
+      if (elements.offlineStatus) elements.offlineStatus.textContent = "Offline cache is active. The standalone download is also available.";
+    }).catch(() => {
+      if (elements.offlineStatus) elements.offlineStatus.textContent = "Standalone offline download is available.";
+    });
+  }
+
+  try {
+    applyTheme(localStorage.getItem("formsComparatorTheme") || "light");
+  } catch (error) {
+    applyTheme("light");
+  }
+  const hadDraft = loadDraft();
+  [elements.previousInput, elements.currentInput, elements.quoteInput, elements.fourthInput, elements.prefixInput].forEach((field) => {
+    field.addEventListener("input", scheduleDraftSave);
+  });
+  window.addEventListener("beforeunload", saveDraft);
+  renderPreview(elements.previousPreview, []);
+  renderPreview(elements.currentPreview, []);
+  renderPreview(elements.quotePreview, []);
+  renderPreview(elements.fourthPreview, []);
+  renderResults();
+  renderChecklist();
+  updateMetrics({}, null);
+  drawCharts({});
+  if (hadDraft && (elements.previousInput.value || elements.currentInput.value || elements.quoteInput.value || elements.fourthInput.value)) {
+    compare();
+  }
+})();
+
+</script>
+  </body>
+</html>

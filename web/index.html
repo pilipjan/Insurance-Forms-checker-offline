@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Insurance Forms Comparator</title>
+    <meta
+      name="description"
+      content="Offline-capable browser comparator for insurance forms and endorsements schedules."
+    />
+    <meta name="theme-color" content="#111827" />
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">IF</div>
+          <div>
+            <h1>Insurance Forms Comparator</h1>
+            <p>Forms & Endorsements schedules</p>
+          </div>
+        </div>
+
+        <nav class="nav-list" aria-label="Workspace sections">
+          <a href="#workspace">Workspace</a>
+          <a href="#results">Results</a>
+          <a href="#settings">Settings</a>
+        </nav>
+
+        <section class="side-panel">
+          <h2>Workflow</h2>
+          <ol>
+          <li>Paste Previous and Current schedules.</li>
+            <li>Clean & Preview both sides.</li>
+            <li>Fix OCR issues in the raw input.</li>
+          <li>Compare, then copy the Excel checklist.</li>
+          </ol>
+        </section>
+
+        <section class="side-panel compact">
+          <h2>Privacy</h2>
+          <p>No pasted policy data is uploaded or sent anywhere. Draft restore saves only in this browser.</p>
+        </section>
+
+        <section class="side-panel compact">
+          <h2>Version</h2>
+          <p>Offline-capable web app 1.8.0</p>
+        </section>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Commercial policy processing</p>
+            <h2>Compare Previous vs Current policy forms</h2>
+          </div>
+          <div class="toolbar">
+            <button class="btn secondary" id="loadSamplesBtn" type="button">Load Sample</button>
+            <button class="btn secondary" id="showQuoteBtn" type="button">Add 3rd Document</button>
+            <button class="btn secondary" id="showFourthBtn" type="button">Add 4th Document</button>
+            <button class="btn secondary" id="themeToggleBtn" type="button">Dark Mode</button>
+            <button class="btn secondary" id="clearBtn" type="button">Clear</button>
+            <a class="btn secondary" id="downloadOfflineLink" href="./insurance-forms-comparator-offline.html" download>
+              Download Offline Copy
+            </a>
+            <button class="btn primary" id="compareBtn" type="button">Compare Policies</button>
+          </div>
+        </header>
+
+        <section class="privacy-banner" aria-label="Privacy and offline notice">
+          <strong>Privacy notice:</strong>
+          This tool runs entirely in your browser. Pasted policy data is not uploaded, tracked, or sent to a server.
+          Draft restore saves locally on this device only.
+          <span id="offlineStatus">Offline copy ready after first load.</span>
+        </section>
+
+        <section class="memory-banner" aria-label="Local draft restore">
+          <div>
+            <strong>Local draft restore</strong>
+            <span id="memoryStatus">No saved draft yet.</span>
+          </div>
+          <div class="toolbar">
+            <button class="btn secondary small" id="saveDraftBtn" type="button">Save Draft</button>
+            <button class="btn secondary small" id="clearDraftBtn" type="button">Clear Saved Draft</button>
+          </div>
+        </section>
+
+        <section class="metrics" aria-label="Comparison summary">
+          <div class="metric">
+            <span>Previous</span>
+            <strong id="metricPrevious">0</strong>
+          </div>
+          <div class="metric">
+            <span>Current</span>
+            <strong id="metricCurrent">0</strong>
+          </div>
+          <div class="metric good">
+            <span>Matches</span>
+            <strong id="metricMatch">0</strong>
+          </div>
+          <div class="metric added">
+            <span>Added</span>
+            <strong id="metricAdded">0</strong>
+          </div>
+          <div class="metric removed">
+            <span>Removed</span>
+            <strong id="metricRemoved">0</strong>
+          </div>
+          <div class="metric changed">
+            <span>Edition Changed</span>
+            <strong id="metricChanged">0</strong>
+          </div>
+          <div class="metric unknown">
+            <span>Unknown</span>
+            <strong id="metricUnknown">0</strong>
+          </div>
+          <div class="metric">
+            <span>Completion</span>
+            <strong id="metricCompletion">0%</strong>
+          </div>
+        </section>
+
+        <section class="dashboard-grid">
+          <div class="chart-panel">
+            <div class="section-head">
+              <h3>Outcome Mix</h3>
+              <span id="lastCompared">Not compared</span>
+            </div>
+            <canvas id="pieChart" width="360" height="220" aria-label="Outcome mix chart"></canvas>
+          </div>
+          <div class="chart-panel">
+            <div class="section-head">
+              <h3>Status Counts</h3>
+              <span id="comparisonTime">0.00 sec</span>
+            </div>
+            <canvas id="barChart" width="560" height="220" aria-label="Status count chart"></canvas>
+          </div>
+        </section>
+
+        <section class="workspace" id="workspace">
+          <article class="policy-pane">
+            <div class="section-head">
+              <h3>Previous Policy</h3>
+              <button class="btn small" id="cleanPreviousBtn" type="button">Clean & Preview</button>
+            </div>
+            <textarea id="previousInput" spellcheck="false" placeholder="Paste previous policy forms here"></textarea>
+            <div class="preview-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Status</th>
+                    <th>Code</th>
+                    <th>Edition</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody id="previousPreview"></tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="policy-pane">
+            <div class="section-head">
+              <h3>Current Policy</h3>
+              <button class="btn small" id="cleanCurrentBtn" type="button">Clean & Preview</button>
+            </div>
+            <textarea id="currentInput" spellcheck="false" placeholder="Paste current policy forms here"></textarea>
+            <div class="preview-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Status</th>
+                    <th>Code</th>
+                    <th>Edition</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody id="currentPreview"></tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="policy-pane optional-doc hidden" id="quotePane">
+            <div class="section-head">
+              <h3>Quote / 3rd Document</h3>
+              <div class="toolbar">
+                <button class="btn small" id="collapseQuoteBtn" type="button">Minimize</button>
+                <button class="btn small danger" id="removeQuoteBtn" type="button">Remove</button>
+                <button class="btn small" id="cleanQuoteBtn" type="button">Clean & Preview</button>
+              </div>
+            </div>
+            <textarea id="quoteInput" spellcheck="false" placeholder="Paste quote or third schedule here"></textarea>
+            <div class="preview-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Status</th>
+                    <th>Code</th>
+                    <th>Edition</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody id="quotePreview"></tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="policy-pane optional-doc hidden" id="fourthPane">
+            <div class="section-head">
+              <h3>4th Document</h3>
+              <div class="toolbar">
+                <button class="btn small" id="collapseFourthBtn" type="button">Minimize</button>
+                <button class="btn small danger" id="removeFourthBtn" type="button">Remove</button>
+                <button class="btn small" id="cleanFourthBtn" type="button">Clean & Preview</button>
+              </div>
+            </div>
+            <textarea id="fourthInput" spellcheck="false" placeholder="Paste fourth schedule here"></textarea>
+            <div class="preview-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Status</th>
+                    <th>Code</th>
+                    <th>Edition</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody id="fourthPreview"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+
+        <section class="results-section" id="results">
+          <div class="section-head">
+            <h3>Comparison Results</h3>
+            <div class="toolbar">
+              <label class="select-label" for="resultViewSelect">Display / Export</label>
+              <select id="resultViewSelect">
+                <option value="all">All compared documents</option>
+                <option value="Current Policy">Current Policy</option>
+                <option value="Quote / 3rd Document">3rd Document</option>
+                <option value="4th Document">4th Document</option>
+              </select>
+              <button class="btn secondary" id="exportCsvBtn" type="button">Export CSV</button>
+              <button class="btn secondary" id="exportExcelBtn" type="button">Export Excel</button>
+              <button class="btn secondary" id="exportJsonBtn" type="button">Export JSON</button>
+            </div>
+          </div>
+          <p class="section-note" id="exportScopeNote">Exports use the selected Display / Export view.</p>
+          <div class="results-table-wrap">
+            <table class="result-table">
+              <thead>
+                <tr>
+                  <th>Status</th>
+                  <th>Compared Document</th>
+                  <th>Normalized Code</th>
+                  <th>Original Previous</th>
+                  <th>Original Compared Document</th>
+                  <th>Description</th>
+                  <th>Edition</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody id="resultsBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="results-section" id="excelChecklist">
+          <div class="section-head">
+            <div>
+              <h3>Excel Paste Checklist</h3>
+              <p class="section-note">Copy these rows and paste directly into Excel: Form / Description, Edition, Status, Source.</p>
+            </div>
+            <div class="toolbar">
+              <button class="btn secondary" id="copyExcelBtn" type="button">Copy for Excel</button>
+              <button class="btn secondary" id="downloadTsvBtn" type="button">Download TSV</button>
+            </div>
+          </div>
+          <div class="results-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Form / Description</th>
+                  <th>Edition</th>
+                  <th>Status</th>
+                  <th>Compared Document</th>
+                </tr>
+              </thead>
+              <tbody id="excelChecklistBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="settings-section" id="settings">
+          <div class="section-head">
+            <h3>Settings</h3>
+            <button class="btn small" id="applySettingsBtn" type="button">Apply Prefixes</button>
+          </div>
+          <label for="prefixInput">Known prefixes</label>
+          <input
+            id="prefixInput"
+            type="text"
+            value="AG, AP, B, BM, BP, CA, CF, CG, CL, CM, CP, CR, CU, CX, CY, DE, DL, DP, DS, EB, EP, FB, FL, FO, FP, GI, HO, IH, IL, IM, IN, MC, MI, MM, MP, OP, PM, PP, PR, SE, SF, TC, WC"
+          />
+        </section>
+      </main>
+    </div>
+
+    <script src="./parser.js"></script>
+    <script src="./compare.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
