@@ -999,9 +999,21 @@ body.section-maximized {
       const rawFormType = spacedMatch[2].toUpperCase();
       const formType = fixOcrDigitInFormType(rawFormType); // e.g. TO→T0
       const formNum = spacedMatch[3];                       // e.g. "02"
-      const month = spacedMatch[4] || "";                   // e.g. "11"
-      const year = spacedMatch[5] || "";                    // e.g. "89"
-      const description = cleanText(spacedMatch[6] || "");
+      let month = spacedMatch[4] || "";                     // e.g. "11"
+      let year  = spacedMatch[5] || "";                     // e.g. "89"
+      let description = cleanText(spacedMatch[6] || "");
+
+      // If no month/year captured from the spaced pattern but description starts with
+      // a (MM/YY) or MM/YY edition token, promote it to the edition fields.
+      // Handles: "CG 20 37 (04/13)" where (04/13) lands in description slot.
+      if (!month && !year && description) {
+        const trailingEd = description.match(/^\(?(\d{2})\/(\d{2})\)?\s*(.*)?$/);
+        if (trailingEd) {
+          month       = trailingEd[1];
+          year        = trailingEd[2];
+          description = cleanText(trailingEd[3] || "");
+        }
+      }
 
       const baseCode = `${rawPrefix}${formType}${formNum}`.toUpperCase();
       const edition = (month && year) ? `${month}${year}` : "";
